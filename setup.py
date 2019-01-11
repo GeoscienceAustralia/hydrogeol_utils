@@ -27,4 +27,14 @@ setup(name='hydrogeol_utils',
       url='https://github.com/Neil-Symington/hydrogeol_utils',
       author='Neil Symington',
       author_email='neil.symington@ga.gov.au',
+      requires = [
+            'matplotlib',
+            'netcdf4',
+            'numpy',
+            'pandas',
+            'shapely',
+            'scipy',
+            'setuptools',
+            'sqlalchemy'
+              ],
       license='Apache License Version 2.0')
