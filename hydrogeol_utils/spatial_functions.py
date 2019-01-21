@@ -26,6 +26,7 @@ Spatial functions used for various analysis
 import numpy as np
 import pandas as pd
 from scipy import interpolate
+from scipy.spatial.ckdtree import cKDTree
 
 def inverse_distance_weights(distance, power):
     """
@@ -150,3 +151,21 @@ def interpolate_layered_model(df, parameter_columns, interval_columns, new_inter
                                                             df_subset[p]).sum()
 
     return new_intervals
+
+def nearest_neighbour(points, coords, points_required = 1, max_distance = 250.):
+    """
+
+    :param points: array of points to find the nearest neighbour for
+    :param coords: coordinates of points
+    :param points_required: number of points to return
+    :param max_distance: maximum search radius
+    :return:
+    """
+    # Initialise tree instance
+    kdtree = cKDTree(data=coords)
+
+    # iterate throught the points and find the nearest neighbour
+    distances, indices = kdtree.query(points, k=points_required,
+                                      distance_upper_bound=max_distance)
+    return distances, indices
+

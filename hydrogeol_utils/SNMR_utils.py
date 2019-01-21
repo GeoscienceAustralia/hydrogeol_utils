@@ -167,29 +167,27 @@ def extract_snmr_inversions(acquisition_ids, connection, mask_below_doi=True):
 
         return df_inversions.iloc[condition]
 
-def plot_wt(df, plot_title, doi= None):
+def plot_profile(ax, df, doi= None):
     """
     Function for plotting SNMR profiles similarly to the GMR inversion
     software. This function allows customised plots and importantly
     the ability to include the doi.
 
+    :param ax: matplotlib axis
     :param df: individual inversion dataframe
-    :param plot_title: title of the plot
     :param doi: depth of investigation
     :return:
+    matplotlib axis with profile plotted
     """
-    # Create a figure
-    plt.close('all')
-    fig, ax = plt.subplots(figsize=(5, 4), dpi=150)
+
 
     # invert the y axix so that depth in a positive number
-    plt.gca().invert_yaxis()
+    #plt.gca().invert_yaxis()
 
     # define plot data using pandas series names
     y = df['Depth_from'].values
     Total = df['Total_water_content'].values * 100
     Mobile = df['Mobile_water_content'].values * 100
-    Bound = df['Bound_water_content'].values * 100
 
     # set the range on the x axis so all the plots are the same scale
     ax.set_xlim([0, np.max(Total) + 5])

@@ -31,8 +31,13 @@ from scipy.interpolate import griddata
 import numpy as np
 from geophys_utils._netcdf_line_utils import NetCDFLineUtils
 from geophys_utils._transect_utils import coords2distance
+from hydrogeol_utils import spatial_functions
 import h5py
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib.cm as cm
+from matplotlib.patches import Rectangle
+from matplotlib.collections import PatchCollection
 
 
 class ConductivitySectionPlot:
@@ -539,10 +544,10 @@ class ConductivitySectionPlot:
         # Define extents based on kwarg max depth
 
         try:
-            min_elevation = np.min(gridded_variables['elevation']) - gridded_variables['max_depth']
+            min_elevation = np.min(gridded_variables['elevation']) - panel_kwargs['max_depth']
             ax.set_ylim(min_elevation)
 
-        except:
+        except KeyError:
 
             min_elevation = gridded_variables['grid_elevations'][-1]
 
@@ -550,7 +555,7 @@ class ConductivitySectionPlot:
         extent = (gridded_variables['grid_distances'][0], gridded_variables['grid_distances'][-1],
                   gridded_variables['grid_elevations'][-1], max_extent)
 
-        ax.set_ylim(min_elevation, gridded_variables['grid_elevations'][0] + 10)
+        ax.set_ylim(min_elevation, gridded_variables['grid_elevations'][0] + 40)
 
         # Define stretch
         # Flag for a logarithmic stretch
@@ -817,7 +822,7 @@ class ConductivitySectionPlot:
             plt.close()
 
 
-    def plot_conductivity_section_from_hdf5file(self, path, ax_array, plot_settings, panel_settings, save_fig = False,
+    def plot_conductivity_section_from_hdf5file(self, ax_arry, path, plot_settings, panel_settings, save_fig = False,
                                                 outfile = None):
         """
         Function for plotting a vertical section from an hdf5 file
@@ -842,6 +847,74 @@ class ConductivitySectionPlot:
         self.plot_conductivity_section(ax_array, gridded_variables, plot_settings, panel_settings,
                                    save_fig=save_fig, outfile=outfile)
 
+    def add_SNMR_sticks(self, ax, df, gridded_variables, plot_variable, xy_columns, cmap = 'plasma_r',
+                        colour_stretch = [0,0.2], max_distance = 200., stick_thickness = 150.):
 
 
+        # Get the coordinates of the section
+
+        utm_coords = np.hstack((gridded_variables['easting'].reshape([-1, 1]),
+                                gridded_variables['northing'].reshape([-1, 1])))
+
+        # Find the nearest neighbours within the maximum distance
+
+        d, i = spatial_functions.nearest_neighbour(df[xy_columns].values,
+                                                   utm_coords,
+                                                   points_required=1,
+                                                   max_distance=200.)
+        # Add the minimum distance to the dataframe and remove nulls (i.e. those
+        # that have a distance greater than the maximum allowable
+
+        df['min_index'] = i
+        df = df[df['min_index'] != 1099]
+
+        # Create an elevation from, to and distance along the line using the elevation and
+        # distance along the line of the nearest neighbour
+
+        df.loc[:,'Elevation_from'] = gridded_variables['elevation'][df['min_index']] - df['Depth_from']
+        df.loc[:,'Elevation_to'] = gridded_variables['elevation'][df['min_index']] - df['Depth_to']
+        df.loc[:,'dist_along_line'] = gridded_variables['grid_distances'][df['min_index']]
+
+        # Now we will define the colour stretch for water content based on the plasma colourbar
+        vmin, vmax = colour_stretch[0], colour_stretch[1]
+        norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+        cmap = plt.get_cmap(cmap)
+        m = cm.ScalarMappable(norm=norm, cmap=cmap)
+
+        # Iterate through the SNMR sites and incrementally plot the interval values
+        for item in df.acquisition_id.unique():
+            df_inv = df[df['acquisition_id'] == item]
+            # Iterate through the elevation intervls and add them to the axis
+            for index, row in df_inv.iterrows():
+                # Define variables from the dataframe row
+                elevation_from = row['Elevation_from']
+                thickness = elevation_from - row['Elevation_to']
+                distance_along_line = row['dist_along_line']
+                variable = row[plot_variable]
+                # Add them to the axis
+                rect = Rectangle((distance_along_line, elevation_from), stick_thickness, thickness,
+                                       edgecolor='k', facecolor=m.to_rgba(variable))
+                ax.add_patch(rect)
+
+    def add_custom_colourbar(self, ax, cmap, vmin, vmax, xlabel):
+        """
+        Function for adding a custom gradient based colour bar to a matplotlib axis
+        :param ax: axis created for colourbar
+        :param cmap: string - matplotlib colour stretch
+        :param vmin: float - minimium data value
+        :param vmax: float - maximum data value
+        :param xlabel: string - label for the x-axis
+        """
+        # Define the discretisation
+        disc = 25
+        # Create a grid that
+        m= np.expand_dims(np.linspace(vmin,vmax,disc),axis=0)
+        # Grid
+        ax.imshow(m, interpolation='bicubic', cmap=cmap,
+                 extent=(vmin,vmax,0,vmax*0.1))
+        # Set the ticks
+        ax.set_yticks(np.arange(0))
+        ax.set_xticks([vmin, vmax])
+        # Set the axis label
+        ax.set_xlabel(xlabel)
 

@@ -27,6 +27,7 @@ import numpy as np
 from hydrogeol_utils import spatial_functions
 import pandas as pd
 
+
 # A function for getting the most representative conductivity profile given
 # a set of distances, indices and corresponding AEM data
 def extract_conductivity_profile(dataset, distances, indices,
