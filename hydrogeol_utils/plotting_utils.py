@@ -134,11 +134,12 @@ class ConductivitySectionPlot:
 
         nlayers = var_dict['nlayers']
 
-        # Create a new layer top elevation array
+        # Create array for the top elevation of each point and layer
         layer_top_elevations = (np.repeat(var_dict['elevation'][:, np.newaxis],
                                           nlayers, axis=1) - var_dict['layer_top_depth'])
 
-        # Create elevation array for layer samples indexed by point and layer
+        # Create array for the top elevation of each sublayer (i.e. layers divided into sublayers given the
+        # layer_subdivisions parameters
         sublayer_elevations = np.ones(shape=(layer_top_elevations.shape[0],
                                              layer_top_elevations.shape[1] * layer_subdivisions),
                                       dtype=layer_top_elevations.dtype) * np.NaN
@@ -148,49 +149,41 @@ class ConductivitySectionPlot:
                                          layer_top_elevations.shape[1] * layer_subdivisions),
                                   dtype=layer_top_elevations.dtype) * np.NaN
 
+        # Populate the point distances array
+
         for depth_index in range(point_distances.shape[1]):
             point_distances[:, depth_index] = var_dict['distances']
 
+        # Iterate through points in elevation array
+        for point_index in range(layer_top_elevations.shape[0]):
+            # Iterate through layers
+            for layer_index in range(layer_top_elevations.shape[1]):
+                # Calculate layer thickness
+                try:
+                    layer_thickness = layer_top_elevations[point_index, layer_index] - \
+                                      layer_top_elevations[point_index, layer_index + 1]
+                # Break if on bottom layer which has infinite thikness
+                except IndexError:
+                    break
 
+                # Iterate through the sub-layers
+                for i in range(layer_subdivisions):
+                    # Get sublayer index
+                    sublayer_index = layer_index * layer_subdivisions + i
+
+                    sublayer_elevations[point_index,sublayer_index]=layer_top_elevations[point_index, layer_index] - \
+                                                                    i * layer_thickness /layer_subdivisions
+
+
+        # Create an empty dictionary for the sublayer variables
         subvar_dict = {}
 
-        # Iterate through the 2d variables
+        # iterate through the variables and create a sublayer array for each
         for var in vars_2d:
-            subvar_dict[var] = np.ones(shape=(layer_top_elevations.shape[0],
-                                    layer_top_elevations.shape[1] * layer_subdivisions),
-                                   dtype=var_dict[var].dtype) * np.NaN
+            subvar_dict[var] = np.repeat(var_dict[var], layer_subdivisions, axis=1)
 
-            # Iterate through points in elevation array
-            for point_index in range(layer_top_elevations.shape[0]):
-                # Iterate through layers
-                for layer_index in range(layer_top_elevations.shape[1]):
-                    # Iterate through layer index
-                    try:
-                        layer_thickness = layer_top_elevations[point_index, layer_index] - \
-                                          layer_top_elevations[point_index, layer_index + 1]
-                    except:
-                        break
-
-                    if np.isnan(var_dict[var][point_index, layer_index]):
-                        break
-
-                    for sublayer_index in range(layer_subdivisions):
-                        sublayer_elevations[point_index,
-                                            layer_index * layer_subdivisions + sublayer_index] = layer_top_elevations[
-                                                                                                     point_index,
-                                                                                                     layer_index] - \
-                                                                                                 sublayer_index * \
-                                                                                                 layer_thickness / \
-                                                                                                 layer_subdivisions
-
-                        subvar_dict[var][point_index,
-                               layer_index *
-                               layer_subdivisions +
-                               sublayer_index] = var_dict[var][point_index, layer_index]
-
-        # Obtain good data mask
-        good_data_mask = np.logical_and(~np.isnan(sublayer_elevations),
-                                        ~np.isnan(subvar_dict[vars_2d[0]]))
+        # Obtain good data mask -- is this required??
+        good_data_mask = ~np.isnan(sublayer_elevations)
 
         # Discard invalid points and store distance/elevation coordinates in dense 2D array
         point_distance_elevation = np.ones(shape=(np.count_nonzero(good_data_mask), 2),
@@ -202,6 +195,7 @@ class ConductivitySectionPlot:
         # Compute distance range for bitmap
         distance_range = (math.floor(min(point_distance_elevation[:, 0]) / 10.0) * 10.0,
                           math.ceil(max(point_distance_elevation[:, 0]) / 10.0) * 10.0)
+
 
         # Compute elevation range for bitmap
         elevation_range = (math.floor(min(point_distance_elevation[:, 1]) / 10.0) * 10.0,
@@ -220,8 +214,7 @@ class ConductivitySectionPlot:
         # Mask below the maximum depth
         max_depth = np.max(var_dict['layer_top_depth'][point_index]) + 50
 
-        min_elevations = var_dict['elevation'] -\
-                         max_depth * np.ones(np.shape(var_dict['layer_top_depth'][:, -1]))
+        min_elevations = var_dict['elevation'] - max_depth * np.ones(np.shape(var_dict['layer_top_depth'][:, -1]))
 
         # Compute interpolated 1D array of minimum valid elevation values for each X
         min_elevation_grid = griddata(point_distances[:, 0], min_elevations, grid_distances,
@@ -238,6 +231,7 @@ class ConductivitySectionPlot:
         var_dict['grid_elevations'] = grid_elevations
 
         var_dict['grid_distances'] = grid_distances
+
 
         # Iterate through variables and interpolate onto new grid
         for var in vars_2d:
@@ -373,7 +367,7 @@ class ConductivitySectionPlot:
             dataLineUtils = NetCDFLineUtils(self.EM_data)
             # Flag for if dta was included in the plot section initialisation
             plot_dat = True
-        except AssertionError:
+        except AttributeError:
             plot_dat = False
 
         # If line is not in an array like object then put it in a list
@@ -392,9 +386,9 @@ class ConductivitySectionPlot:
         # First create generators for returning coordinates and variables for the
         # lines
 
+
         cond_lines= condLineUtils.get_lines(line_numbers=lines,
-                                            variables=conductivity_variables +
-                                                      ['elevation', 'layer_top_depth'])
+                                            variables=conductivity_variables)
         if plot_dat:
             dat_lines = dataLineUtils.get_lines(line_numbers=lines,
                                                 variables=data_variables)
@@ -413,7 +407,7 @@ class ConductivitySectionPlot:
             # array and flag it
 
             # Define coordinates
-            utm_coordinates = cond_var_dict['coordinates']
+            utm_coordinates = condLineUtils.utm_coords(cond_var_dict['coordinates'])[1]
 
             # Add the flag to the dictionary
             if utm_coordinates[0, 0] > utm_coordinates[-1, 0]:
@@ -431,6 +425,10 @@ class ConductivitySectionPlot:
 
             vars_2d = [v for v in conductivity_variables if cond_var_dict[v].ndim == 2]
             vars_1d = [v for v in conductivity_variables if cond_var_dict[v].ndim == 1]
+
+            # Interpolate 2d variables and save them into the interpolated dictionary
+
+
 
             # Generator for inteprolating 2D variables from the vars_2d list
             interp2d = self.interpolate_2d_vars(vars_2d, cond_var_dict, xres, yres, layer_subdivisions,
@@ -458,8 +456,8 @@ class ConductivitySectionPlot:
                 # For interpolating the EM data we need the interpolated easting and northing
                 # values
 
-                interpolated_utm = np.hstack((interpolated[line_no]['easting'].reshape([-1,1]),
-                                         interpolated[line_no]['northing'].reshape([-1,1])))
+                interpolated_utm = np.hstack((interpolated[line_no]['easting'].reshape([-1, 1]),
+                                         interpolated[line_no]['northing'].reshape([-1, 1])))
 
                 # Generator for interpolating data variables from the data variables list
                 interp_dat = self.interpolate_data(data_variables, data_var_dict, interpolated_utm,
