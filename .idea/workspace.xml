@@ -1,18 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="616524b5-6aea-4abc-9b0d-3e026e76957d" name="Default" comment="Added requirements">
+    <list default="true" id="616524b5-6aea-4abc-9b0d-3e026e76957d" name="Default" comment="Pre">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hydrogeol_utils/AEM_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/hydrogeol_utils/AEM_utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/hydrogeol_utils/SNMR_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/hydrogeol_utils/SNMR_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hydrogeol_utils/spatial_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/hydrogeol_utils/spatial_functions.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/.ipynb_checkpoints/drillers_logs_fuzzy_classification-checkpoint.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/.ipynb_checkpoints/drillers_logs_fuzzy_classification-checkpoint.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/.ipynb_checkpoints/probe_geophysical_relationships-checkpoint.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/.ipynb_checkpoints/probe_geophysical_relationships-checkpoint.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/notebooks/.ipynb_checkpoints/create_SNMR_spatialite-db-checkpoint.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/.ipynb_checkpoints/create_SNMR_spatialite-db-checkpoint.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/notebooks/.ipynb_checkpoints/plotting_AEM_SNMR_inversions-checkpoint.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/.ipynb_checkpoints/plotting_AEM_SNMR_inversions-checkpoint.ipynb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/notebooks/create_SNMR_spatialite-db.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/create_SNMR_spatialite-db.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/drillers_logs_fuzzy_classification.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/drillers_logs_fuzzy_classification.ipynb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/notebooks/plotting_AEM_SNMR_inversions.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/plotting_AEM_SNMR_inversions.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/probe_geophysical_relationships.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/probe_geophysical_relationships.ipynb" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -25,8 +20,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/hydrogeol_utils/SNMR_utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="3196">
-              <caret line="190" selection-start-line="190" selection-end-line="190" />
+            <state relative-caret-position="765">
+              <caret line="47" column="32" selection-start-line="47" selection-start-column="32" selection-end-line="47" selection-end-column="36" />
               <folding>
                 <element signature="e#926#945#0" expanded="true" />
               </folding>
@@ -49,8 +44,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="513">
-              <caret line="875" column="17" selection-start-line="875" selection-start-column="17" selection-end-line="875" selection-end-column="17" />
+            <state relative-caret-position="3726">
+              <caret line="387" selection-start-line="387" selection-end-line="387" />
               <folding>
                 <element signature="e#914#928#0" expanded="true" />
               </folding>
@@ -128,6 +123,7 @@
       <find>min_ele</find>
       <find>colorbar</find>
       <find>ticks</find>
+      <find>subvar</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -149,18 +145,17 @@
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="1688" />
-    <option name="y" value="-936" />
-    <option name="width" value="324" />
-    <option name="height" value="88" />
+  <component name="ProjectFrameBounds" extendedState="7">
+    <option name="x" value="811" />
+    <option name="y" value="-908" />
+    <option name="width" value="1616" />
+    <option name="height" value="916" />
   </component>
   <component name="ProjectView">
     <navigator proportions="" version="1">
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -186,10 +181,11 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
-    <property name="last_opened_file_path" value="$USER_HOME$/Anaconda3/envs/hydrogeol_utils" />
+    <property name="last_opened_file_path" value="$USER_HOME$/Anaconda3/envs/geophys_utils" />
     <property name="settings.editor.selected.configurable" value="IpnbConfigurable" />
   </component>
   <component name="RunDashboard">
@@ -290,14 +286,27 @@
       <option name="project" value="LOCAL" />
       <updated>1547701628940</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="Cleanup and make more efficient">
+      <created>1548910361726</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1548910361726</updated>
+    </task>
+    <task id="LOCAL-00010" summary="Add rjmcmc plotting example">
+      <created>1548910387298</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1548910387298</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="811" y="-908" width="1616" height="916" extended-state="6" />
-    <editor active="true" />
+    <frame x="811" y="-908" width="1616" height="916" extended-state="7" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.113434725" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.14195184" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
@@ -308,7 +317,7 @@
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Terminal" order="7" weight="0.32950193" />
-      <window_info active="true" anchor="bottom" id="Python Console" order="8" visible="true" weight="0.038314175" />
+      <window_info anchor="bottom" id="Python Console" order="8" visible="true" weight="0.04853129" />
       <window_info anchor="bottom" id="Version Control" order="9" weight="0.32950193" />
       <window_info anchor="bottom" id="Event Log" order="10" side_tool="true" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
@@ -325,7 +334,9 @@
     <MESSAGE value="Added requirements" />
     <MESSAGE value="add plotting functions" />
     <MESSAGE value="add AEM plotting notebook" />
-    <option name="LAST_COMMIT_MESSAGE" value="add AEM plotting notebook" />
+    <MESSAGE value="Cleanup and make more efficient" />
+    <MESSAGE value="Add rjmcmc plotting example" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add rjmcmc plotting example" />
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$USER_HOME$/Anaconda3/envs/hydrogeol_utils/Lib/site-packages/zmq/backend/cython/__init__.py">
@@ -363,8 +374,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/hydrogeol_utils/SNMR_utils.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="3196">
-          <caret line="190" selection-start-line="190" selection-end-line="190" />
+        <state relative-caret-position="765">
+          <caret line="47" column="32" selection-start-line="47" selection-start-column="32" selection-end-line="47" selection-end-column="36" />
           <folding>
             <element signature="e#926#945#0" expanded="true" />
           </folding>
@@ -421,8 +432,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="513">
-          <caret line="875" column="17" selection-start-line="875" selection-start-column="17" selection-end-line="875" selection-end-column="17" />
+        <state relative-caret-position="3726">
+          <caret line="387" selection-start-line="387" selection-end-line="387" />
           <folding>
             <element signature="e#914#928#0" expanded="true" />
           </folding>

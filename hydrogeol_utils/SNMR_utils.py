@@ -133,7 +133,7 @@ def tc_k_profile(mobile_water_content, total_water_content,
 def extract_snmr_inversions(acquisition_ids, connection, mask_below_doi=True):
 
     """
-    A function for exrtracting SNMR inversions from the SNMR database
+    A function for extracting SNMR inversions from the SNMR database
     using acquisitions ids within a spatial query
 
     :param acquisition_ids: primary key indices for the acquisition table
@@ -155,7 +155,7 @@ def extract_snmr_inversions(acquisition_ids, connection, mask_below_doi=True):
     # Otherwise we create a mask based on the doi in the invere_model_metadata table
     else:
         query = 'SELECT * FROM inverse_model_metadata WHERE acquisition_id IN (%s)' % placeholders
-        df_doi = pd.read_sql_query(query, connection, index_col='table_id',
+        df_doi = pd.read_sql_query(query, connection, index_col='inversion_id',
                                    params=tuple(acquisition_ids))
         # Note that since there is an issue with the inversion _id column in the inverison
         # table we are using the acquisition _id column
