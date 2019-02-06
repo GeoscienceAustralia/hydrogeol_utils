@@ -27,6 +27,7 @@ import numpy as np
 import pandas as pd
 from scipy import interpolate
 from scipy.spatial.ckdtree import cKDTree
+import collections
 
 def inverse_distance_weights(distance, power):
     """
@@ -62,7 +63,6 @@ def depth_to_thickness(depth):
     return thickness
 
 
-
 def interpolate_layered_model(df, parameter_columns, interval_columns, new_intervals):
     """
     A function that does interpolates model parameters
@@ -83,6 +83,10 @@ def interpolate_layered_model(df, parameter_columns, interval_columns, new_inter
     intervals = np.sort(np.concatenate(tuple([df[c] for c in interval_columns])))
     # The variaous parameters will be added to a dictionary
     params = {}
+    # If the parameter input is a string and not a list make it a list
+    if isinstance(parameter_columns, ("".__class__, u"".__class__)):
+        parameter_columns = [parameter_columns]
+
     for p in parameter_columns:
         # Create an array and add it to the dictionary
         params[p] = np.repeat(df[p].values, 2)

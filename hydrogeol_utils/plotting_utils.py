@@ -37,7 +37,6 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.cm as cm
 from matplotlib.patches import Rectangle
-from matplotlib.collections import PatchCollection
 
 
 class ConductivitySectionPlot:
@@ -117,6 +116,7 @@ class ConductivitySectionPlot:
                 pass
 
         return var_grid
+
 
     def interpolate_2d_vars(self, vars_2d, var_dict, xres, yres,
                            layer_subdivisions, resampling_method):
@@ -845,53 +845,49 @@ class ConductivitySectionPlot:
         self.plot_conductivity_section(ax_array, gridded_variables, plot_settings, panel_settings,
                                    save_fig=save_fig, outfile=outfile)
 
-    def add_SNMR_sticks(self, ax, df, gridded_variables, plot_variable, xy_columns, cmap = 'plasma_r',
-                        colour_stretch = [0,0.2], max_distance = 200., stick_thickness = 150.):
+    def add_sticks(self, ax, df, gridded_variables, plot_variable, xy_columns, cmap='plasma_r',
+                   colour_stretch=[0, 0.2], max_distance=200., stick_thickness=150.):
 
+            # Get the coordinates of the section
+            utm_coords = np.hstack((gridded_variables['easting'].reshape([-1, 1]),
+                                    gridded_variables['northing'].reshape([-1, 1])))
 
-        # Get the coordinates of the section
+            # Find the nearest neighbours within the maximum distance
+            d, i = spatial_functions.nearest_neighbour(df[xy_columns].values,
+                                                       utm_coords,
+                                                       points_required=1,
+                                                       max_distance=200.)
 
-        utm_coords = np.hstack((gridded_variables['easting'].reshape([-1, 1]),
-                                gridded_variables['northing'].reshape([-1, 1])))
+            # Add the minimum distance to the dataframe and remove nulls (i.e. those
+            # that have a distance greater than the maximum allowable as denoted by a value
+            # that is greater thant the length of the xy coordinates
+            df['min_index'] = i
 
-        # Find the nearest neighbours within the maximum distance
+            df = df[df['min_index'] < len(utm_coords)]
 
-        d, i = spatial_functions.nearest_neighbour(df[xy_columns].values,
-                                                   utm_coords,
-                                                   points_required=1,
-                                                   max_distance=200.)
-        # Add the minimum distance to the dataframe and remove nulls (i.e. those
-        # that have a distance greater than the maximum allowable
+            # Create an elevation from, to and distance along the line using the elevation and
+            # distance along the line of the nearest neighbour
 
-        df['min_index'] = i
-        df = df[df['min_index'] != 1099]
+            df.loc[:, 'Elevation_from'] = gridded_variables['elevation'][df['min_index']] - df['Depth_to']
+            df.loc[:, 'Elevation_to'] = gridded_variables['elevation'][df['min_index']] - df['Depth_from']
+            df.loc[:, 'dist_along_line'] = gridded_variables['grid_distances'][df['min_index']]
 
-        # Create an elevation from, to and distance along the line using the elevation and
-        # distance along the line of the nearest neighbour
+            # Now we will define the colour stretch for water content based on the plasma colourbar
+            vmin, vmax = colour_stretch[0], colour_stretch[1]
+            norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+            cmap = plt.get_cmap(cmap)
+            m = cm.ScalarMappable(norm=norm, cmap=cmap)
 
-        df.loc[:,'Elevation_from'] = gridded_variables['elevation'][df['min_index']] - df['Depth_from']
-        df.loc[:,'Elevation_to'] = gridded_variables['elevation'][df['min_index']] - df['Depth_to']
-        df.loc[:,'dist_along_line'] = gridded_variables['grid_distances'][df['min_index']]
-
-        # Now we will define the colour stretch for water content based on the plasma colourbar
-        vmin, vmax = colour_stretch[0], colour_stretch[1]
-        norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-        cmap = plt.get_cmap(cmap)
-        m = cm.ScalarMappable(norm=norm, cmap=cmap)
-
-        # Iterate through the SNMR sites and incrementally plot the interval values
-        for item in df.acquisition_id.unique():
-            df_inv = df[df['acquisition_id'] == item]
             # Iterate through the elevation intervls and add them to the axis
-            for index, row in df_inv.iterrows():
+            for index, row in df.iterrows():
                 # Define variables from the dataframe row
                 elevation_from = row['Elevation_from']
-                thickness = elevation_from - row['Elevation_to']
+                thickness = row['Elevation_to'] - elevation_from
                 distance_along_line = row['dist_along_line']
                 variable = row[plot_variable]
                 # Add them to the axis
                 rect = Rectangle((distance_along_line, elevation_from), stick_thickness, thickness,
-                                       edgecolor='k', facecolor=m.to_rgba(variable))
+                                 edgecolor='k', facecolor=m.to_rgba(variable))
                 ax.add_patch(rect)
 
     def add_custom_colourbar(self, ax, cmap, vmin, vmax, xlabel):
