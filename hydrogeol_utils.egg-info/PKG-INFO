@@ -1,4 +1,4 @@
-Metadata-Version: 1.0
+Metadata-Version: 1.1
 Name: hydrogeol-utils
 Version: 0.1
 Summary: Utilities for processing, visualisation and modelling of high performance data for hydrogeology assessments
@@ -8,3 +8,11 @@ Author-email: neil.symington@ga.gov.au
 License: Apache License Version 2.0
 Description: UNKNOWN
 Platform: UNKNOWN
+Requires: matplotlib
+Requires: netcdf4
+Requires: numpy
+Requires: pandas
+Requires: shapely
+Requires: scipy
+Requires: setuptools
+Requires: sqlalchemy

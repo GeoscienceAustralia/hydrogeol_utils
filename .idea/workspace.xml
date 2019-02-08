@@ -145,11 +145,11 @@
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="7">
-    <option name="x" value="811" />
-    <option name="y" value="-908" />
-    <option name="width" value="1616" />
-    <option name="height" value="916" />
+  <component name="ProjectFrameBounds" extendedState="6">
+    <option name="x" value="-8" />
+    <option name="y" value="-8" />
+    <option name="width" value="1936" />
+    <option name="height" value="1066" />
   </component>
   <component name="ProjectView">
     <navigator proportions="" version="1">
@@ -185,7 +185,7 @@
     </panes>
   </component>
   <component name="PropertiesComponent">
-    <property name="last_opened_file_path" value="$USER_HOME$/Anaconda3/envs/geophys_utils" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="settings.editor.selected.configurable" value="IpnbConfigurable" />
   </component>
   <component name="RunDashboard">
@@ -216,7 +216,6 @@
       <option name="additionalOptions" value="" />
       <option name="ipnbHost" value="127.0.0.1" />
       <option name="ipnbPort" value="8888" />
-      <method v="2" />
     </configuration>
   </component>
   <component name="SvnConfiguration">
