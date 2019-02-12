@@ -173,3 +173,23 @@ def nearest_neighbour(points, coords, points_required = 1, max_distance = 250.):
                                       distance_upper_bound=max_distance)
     return distances, indices
 
+
+def resample_depth_data(depths, values, resample_interval=2., kind='cubic'):
+    """
+    Function for resampling depth data (e.g. borehole data) onto a regular axis
+    :param depths:
+    :param values:
+    :param resample_interval:
+    :param kind:
+    :return:
+    """
+    x, y = depths, values
+
+    # Use scipy 1d interpolator
+    interp = interpolate.interp1d(x, y, kind=kind)
+
+    newx = np.arange(np.min(x), np.max(x), resample_interval)
+
+    newy = interp(newx)
+
+    return newx, newy
