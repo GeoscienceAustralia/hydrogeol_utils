@@ -998,6 +998,11 @@ def add_downhole_log_data(ax, df, gridded_variables, plot_variable, xy_columns, 
 
     df = df[df['min_index'] < len(utm_coords)]
 
+    # Kill the function if the downhole logs is not within the max distance
+    if len(df) == 0:
+        return None
+
+
     # Create an elevation from, to and distance along the line using the elevation and
     # distance along the line of the nearest neighbour
 

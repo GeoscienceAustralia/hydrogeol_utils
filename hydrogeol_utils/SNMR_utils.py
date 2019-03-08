@@ -167,7 +167,7 @@ def extract_snmr_inversions(acquisition_ids, connection, mask_below_doi=True):
 
         return df_inversions.iloc[condition]
 
-def plot_profile(ax, df, doi= None):
+def plot_profile(ax, df, doi= None, plot_mobile_water = False):
     """
     Function for plotting SNMR profiles similarly to the GMR inversion
     software. This function allows customised plots and importantly
@@ -176,6 +176,8 @@ def plot_profile(ax, df, doi= None):
     :param ax: matplotlib axis
     :param df: individual inversion dataframe
     :param doi: depth of investigation
+    :param plot_mobile_water: boolean flag for plotting
+    mobile water
     :return:
     matplotlib axis with profile plotted
     """
@@ -187,19 +189,30 @@ def plot_profile(ax, df, doi= None):
     # define plot data using pandas series names
     y = df['Depth_from'].values
     Total = df['Total_water_content'].values * 100
-    Mobile = df['Mobile_water_content'].values * 100
+
+    if plot_mobile_water:
+        Mobile = df['Mobile_water_content'].values * 100
+        # Plot the data
+        ax.fill_betweenx(y, 0, Total,
+                         label='Bound H2O', facecolor='pink')
+        ax.fill_betweenx(y, 0, Mobile,
+                         label='Mobile H2O', facecolor='blue')
+    else:
+        ax.fill_betweenx(y, 0, Total,
+                         label='Mobile H2O', facecolor='blue')
+
 
     # set the range on the x axis so all the plots are the same scale
     ax.set_xlim([0, np.max(Total) + 5])
 
-    # Plot the data
-    ax.fill_betweenx(y, 0, Total,
-                     label='Bound H2O', facecolor='pink')
-    ax.fill_betweenx(y, 0, Mobile,
-                     label='Mobile H2O', facecolor='blue')
+
     # plot lines
     ax.plot(Total, y, 'k-', linewidth=0.5)
-    ax.plot(Mobile, y, 'k-', linewidth=0.5)
+
+    if plot_mobile_water:
+        ax.plot(Mobile, y, 'k-', linewidth=0.5)
+    else:
+        ax.plot(Total, y, 'k-', linewidth=0.5)
 
     # make legend
     ax.legend(fontsize=6)
