@@ -69,7 +69,7 @@ class ConductivitySectionPlot:
             if not self.testNetCDFDataset(netCDFemDataset):
                 raise ValueError("Input datafile is not netCDF4 format")
             else:
-                self.EM_data =  netCDFemDataset
+                self.EM_data = netCDFemDataset
                 self.dataLineUtils = NetCDFLineUtils(self.EM_data)
                 self.EM_variables = []
         else:
@@ -154,6 +154,7 @@ class ConductivitySectionPlot:
         # Define coordinates
         utm_coordinates = self.condLineUtils.utm_coords(cond_var_dict['coordinates'])[1]
 
+
         # Add the flag to the dictionary
         if utm_coordinates[0, 0] > utm_coordinates[-1, 0]:
             cond_var_dict['reverse_line'] = True
@@ -231,6 +232,7 @@ class ConductivitySectionPlot:
         if self.EM_data is not None:
             # Flag for if dta was included in the plot section initialisation
             plot_dat = True
+
         else:
             plot_dat = False
 
@@ -265,7 +267,10 @@ class ConductivitySectionPlot:
 
             # Extract the variables and coordinates for the line in question
             if plot_cond:
+
                 line_no, cond_var_dict = next(cond_lines)
+
+                cond_var_dict['utm_coordinates'] = self.condLineUtils.utm_coords(cond_var_dict['coordinates'])[1]
 
                 interpolated[line_no] =  self.grid_conductivity_variables(line_no, cond_var_dict,
                                                                           gridding_params)
@@ -274,10 +279,13 @@ class ConductivitySectionPlot:
                 # Extract variables from the data
                 line_no, data_var_dict = next(dat_lines)
 
+                data_var_dict['utm_coordinates'] = self.dataLineUtils.utm_coords(data_var_dict['coordinates'])[1]
+
                 # If the conductivity variables have not been plotted then we need to interpolate the coordinates
 
                 if not plot_cond:
-                    interpolated[line_no], data_var_dict = self.interpolate_coordinates(line_no,data_var_dict,
+
+                    interpolated[line_no], data_var_dict = self.interpolate_data_coordinates(line_no,data_var_dict,
                                                                                         gridding_params)
 
                 interpolated_utm = np.hstack((interpolated[line_no]['easting'].reshape([-1, 1]),
@@ -288,6 +296,7 @@ class ConductivitySectionPlot:
                                               resampling_method)
 
                 for var in self.EM_variables:
+
                     interpolated[line_no][var] = next(interp_dat)
 
             # Save to hdf5 file if the keyword is passed
@@ -301,9 +310,10 @@ class ConductivitySectionPlot:
                     else:
                         self.save_dict_to_hdf5(fname, interpolated[line_no])
 
-            # Many lines may fil up memory so if the dictionary is not being returned then
+            # Many lines may fill up memory so if the dictionary is not being returned then
             # we garbage collect
             if not return_dict:
+
                 del interpolated[line_no]
 
                 # Collect the garbage
@@ -515,14 +525,14 @@ def interpolate_data(data_variables, var_dict, interpolated_utm,
     """
 
     :param data_variables: variables from netCDF4 dataset to interpolate
-    :param var_dict: victionary with the arrays for each variable
+    :param var_dict: dictionary with the arrays for each variable
     :param interpolated_utm: utm corrdinates onto which to interpolate the line data
     :param resampling_method:
     :return:
     """
 
     # Define coordinates
-    utm_coordinates = var_dict['coordinates']
+    utm_coordinates = var_dict['utm_coordinates']
 
     # Add distance array to dictionary
     distances = coords2distance(utm_coordinates)
@@ -763,8 +773,17 @@ def plot_multilines_data(ax, gridded_variables, variable, panel_kwargs):
 
     data = gridded_variables[variable]
 
+    try:
+        colour = panel_kwargs["colour"]
+        linewidth = panel_kwargs["linewidth"]
+    except KeyError:
+        colour = 'k'
+        linewidth = 1
+
+
     for i, col in enumerate(data.T):
-        ax.plot(gridded_variables['grid_distances'], data.T[i])
+        ax.plot(gridded_variables['grid_distances'], data.T[i],
+                color = colour, linewidth = linewidth)
         ax.set_yscale('log')
     try:
         ylabel = panel_kwargs['ylabel']
@@ -907,7 +926,7 @@ def plot_conductivity_section(ax_array, gridded_variables, plot_settings, panel_
         plt.close()
 
 
-def plot_conductivity_section_from_hdf5file(ax_arry, path, plot_settings, panel_settings, save_fig = False,
+def plot_conductivity_section_from_hdf5file(ax_array, path, plot_settings, panel_settings, save_fig = False,
                                                 outfile = None):
     """
     Function for plotting a vertical section from an hdf5 file
