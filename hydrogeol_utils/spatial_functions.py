@@ -156,7 +156,7 @@ def interpolate_layered_model(df, parameter_columns, interval_columns, new_inter
 
     return new_intervals
 
-def nearest_neighbour(points, coords, points_required = 1, max_distance = 250.):
+def nearest_neighbours(points, coords, points_required = 1, max_distance = 250.):
     """
 
     :param points: array of points to find the nearest neighbour for

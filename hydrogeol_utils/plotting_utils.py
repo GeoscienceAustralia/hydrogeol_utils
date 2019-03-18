@@ -959,7 +959,7 @@ def add_1d_layered_model(ax, df, gridded_variables, plot_variable, xy_columns, c
                             gridded_variables['northing'].reshape([-1, 1])))
 
     # Find the nearest neighbours within the maximum distance
-    d, i = spatial_functions.nearest_neighbour(df[xy_columns].values,
+    d, i = spatial_functions.nearest_neighbours(df[xy_columns].values,
                                                utm_coords,
                                                points_required=1,
                                                max_distance=200.)
@@ -1005,7 +1005,7 @@ def add_downhole_log_data(ax, df, gridded_variables, plot_variable, xy_columns, 
                             gridded_variables['northing'].reshape([-1, 1])))
 
     # Find the nearest neighbours within the maximum distance
-    d, i = spatial_functions.nearest_neighbour(df[xy_columns].values,
+    d, i = spatial_functions.nearest_neighbours(df[xy_columns].values,
                                                utm_coords,
                                                points_required=1,
                                                max_distance=max_distance)
