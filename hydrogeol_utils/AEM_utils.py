@@ -32,7 +32,7 @@ from geophys_utils._transect_utils import coords2distance
 # A function for getting the most representative conductivity profile given
 # a set of distances, indices and corresponding AEM data
 def extract_conductivity_profile(dataset, distances, indices,
-                                 as_dataframe = False):
+                                 as_dataframe = False, mask_below_doi = True):
     """
     A function for finding the most representative AEM conductivity profile
     at a point in space given a set of distances. The inverse distance algorithm
@@ -49,44 +49,65 @@ def extract_conductivity_profile(dataset, distances, indices,
     """
 
     # Now calculate weights based on the distances
-    idws = spatial_functions.inverse_distance_weights(distances, 1)
+    idws = spatial_functions.inverse_distance_weights(distances, 2)
 
     # The result will be a log10 conductivity array as averaging in conductivity
     # is typically done in the log space
-    log_cond = np.zeros(shape=
-                        dataset['layer_top_depth'][:].shape[1],
+    log_conductivity = np.zeros(shape= dataset['layer_top_depth'][:].shape[1],
                         dtype=np.float)
+
+    doi = 0
 
     # Iteratively extract the conductivity profiles using the indices,
     # min_key and aem_keys
+
 
     for i, ind in enumerate(indices):
         # Get the logconductivity proile
         log_cond_profile = np.log10(dataset.variables['conductivity'][ind])
 
         # Now multiply it by its corresponding weight and add it to the log ond array
-        log_cond_profile += idws[i] * log_cond_profile
+        log_conductivity += idws[i] * log_cond_profile
+
+        # Now add this points doi to the doi variable
+        if mask_below_doi:
+
+            doi += idws[i] * dataset.variables['depth_of_investigation'][ind]
 
     # Now return the linear transform the conductivity array and reshape to a single column
 
-    cond_profile = 10 ** log_cond_profile.reshape([-1, 1])
+    cond_profile = 10 ** log_cond_profile
+
+    # Now mask below the depth of investigation
+
+    if mask_below_doi:
+
+        mask = dataset.variables['layer_top_depth'][indices[0]] < doi
+
+        cond_profile = cond_profile[mask]
 
 
     # If specified in kwargs then return a dataframe
     if as_dataframe:
+
         # Now we need to create a depth from and depth too column
-        depth_from = dataset.variables['layer_top_depth'][ind].reshape([-1, 1])
+        depth_from = dataset.variables['layer_top_depth'][ind]
 
         depth_to = np.nan * np.ones(shape=depth_from.shape, dtype=np.float)
-        depth_to[:-1, :] = depth_from[1::]
+        depth_to[:-1] = depth_from[1:]
+
         # Round to 2 decimal places to correct for floating point precision errors
         depth_to = np.round(depth_to, 2)
 
-        # Stack the arrays
-        profile = np.hstack((depth_from, depth_to, cond_profile))
+        if mask_below_doi:
+
+            depth_from = depth_from[mask]
+            depth_to = depth_to[mask]
+
         # create and return a labelled dataframe
-        return pd.DataFrame(columns=['Depth_from','Depth_to',
-                                     'conductivity'],data=profile)
+        return pd.DataFrame(data = {'Depth_from': depth_from,
+                                    "Depth_to": depth_to,
+                                    'conductivity': cond_profile})
     # Otherwise return a numpy array
     else:
         return cond_profile

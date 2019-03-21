@@ -1088,3 +1088,69 @@ def add_custom_colourbar(ax, cmap, vmin, vmax, xlabel):
     # Set the axis label
     ax.set_xlabel(xlabel)
 
+
+def plot_AEM_conductivity_profile(ax, conductivity_profile,
+                                  depth_top, doi=None, log_plot=True):
+    """
+
+    :param ax: matplotlib axis
+    :param conductivity_profile: flat numpy array with conductivity values
+    :param depth_top: flat numpy array with layer top values
+    :param doi: float of depth of investigation
+    :param log_plot: boolean: if True conductivity gets displayed in log space
+    :return:
+    matplotlib axis
+    """
+    # First we want to expand the axes to get the layered
+    # effect on the plot
+
+    cond_expanded = np.zeros(shape=2 * len(conductivity_profile) + 1,
+                             dtype=np.float)
+
+    cond_expanded[1:] = np.repeat(conductivity_profile, 2)
+
+    depth_expanded = (np.max(depth_top) + 10) * np.ones(shape=len(cond_expanded),
+                                                        dtype=np.float)
+
+    depth_expanded[:-1] = np.repeat(depth_top, 2)
+
+    # PLot
+    ax.plot(cond_expanded, depth_expanded)
+
+    plt.gca().invert_yaxis()
+
+    # Add depth of investigation if provided
+    if doi is not None:
+        ax.hlines(doi, 0, np.max(cond_expanded),
+                  color='green', linestyles='dotted',
+                  label='DOI')
+
+        ax.legend()
+
+    if log_plot:
+        ax.set_xscale('log')
+    ax.grid(which='major', linestyle='-', linewidth='0.5', color='grey')
+    ax.grid(which='minor', linestyle=':', linewidth='0.5', color='grey')
+    return ax
+
+
+def plot_downhole_log(ax, values, depth, log_plot=True,
+                              color='k', label = ''):
+    """
+
+    :param ax: matplotlib axis
+    :param values: downhole log values
+    :param depth: downhole log depth
+    :param logplot: boolean: if True conductivity gets displayed in log space
+    :param color: matplotlib colour code
+    :return:
+    """
+    ax.plot(values, depth, color=color, label=label)
+
+    if log_plot:
+        ax.set_xscale('log')
+
+    ax.grid(which='major', linestyle='-', linewidth='0.5', color='grey')
+    ax.grid(which='minor', linestyle=':', linewidth='0.5', color='grey')
+
+    return ax
