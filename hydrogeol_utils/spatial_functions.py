@@ -174,22 +174,36 @@ def nearest_neighbours(points, coords, points_required = 1, max_distance = 250.)
     return distances, indices
 
 
-def resample_depth_data(depths, values, resample_interval=2., kind='cubic'):
+def interpolate_depth_data(df, parameter_columns, interval_column,
+                           new_depths, kind='cubic'):
     """
-    Function for resampling depth data (e.g. borehole data) onto a regular axis
-    :param depths:
-    :param values:
-    :param resample_interval:
-    :param kind:
+    A function that interpolates depth data onto a new set of depths
+
+    :param df: dataframe that is contains model parameters and depths
+    :param parameter_columns: sequence with column names for the parameters that
+    are to be interpolated eg. ['Conductivity', 'GAMMA_CALIBRATED]
+    :param interval_column: string with column names for existing depth
+    :param new_depths: a numpy array with new intervals. Note that the new intervals
+    need have the same column names as the interval_cols
     :return:
+    dataframe with new intervals and interpolated parameter values
     """
-    x, y = depths, values
+    # If the parameter input is a string and not a list make it a list
+    if isinstance(parameter_columns, ("".__class__, u"".__class__)):
+        parameter_columns = [parameter_columns]
 
-    # Use scipy 1d interpolator
-    interp = interpolate.interp1d(x, y, kind=kind)
+    new_df = df.DataFrame(columns = parameter_columns + interval_column)
 
-    newx = np.arange(np.min(x), np.max(x), resample_interval)
+    new_df[interval_column] = new_depths
 
-    newy = interp(newx)
+    for item in parameter_columns:
 
-    return newx, newy
+        depths, values = df[interval_column].values, df[item].values
+
+        # Use scipy 1d interpolator
+        interp = interpolate.interp1d(depths, values, kind=kind)
+
+        # Add to new dataframe
+        new_df[item] = interp(new_depths)
+
+    return new_df
