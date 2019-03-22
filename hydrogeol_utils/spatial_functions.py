@@ -81,6 +81,7 @@ def interpolate_layered_model(df, parameter_columns, interval_columns, new_inter
     # Expand the new intervals and parameters so the top and bottom of layers
     # are represented in a single array
     intervals = np.sort(np.concatenate(tuple([df[c] for c in interval_columns])))
+
     # The variaous parameters will be added to a dictionary
     params = {}
     # If the parameter input is a string and not a list make it a list
@@ -129,7 +130,7 @@ def interpolate_layered_model(df, parameter_columns, interval_columns, new_inter
 
     # Create new columns for the interpolated parameter values
     for p in parameter_columns:
-        new_intervals[p + '_interpolated'] = np.nan
+        new_intervals[p] = np.nan
 
     # Iterate through the new intervals and do an average
     for index, row in new_intervals.iterrows():
@@ -151,7 +152,7 @@ def interpolate_layered_model(df, parameter_columns, interval_columns, new_inter
 
         # Iterate through the parameters and multiply by the corresponding weights
         for p in parameter_columns:
-            new_intervals.at[index, p + '_interpolated'] = (df_subset['weights'] *
+            new_intervals.at[index, p] = (df_subset['weights'] *
                                                             df_subset[p]).sum()
 
     return new_intervals
@@ -178,7 +179,6 @@ def interpolate_depth_data(df, parameter_columns, interval_column,
                            new_depths, kind='cubic'):
     """
     A function that interpolates depth data onto a new set of depths
-
     :param df: dataframe that is contains model parameters and depths
     :param parameter_columns: sequence with column names for the parameters that
     are to be interpolated eg. ['Conductivity', 'GAMMA_CALIBRATED]
@@ -205,5 +205,49 @@ def interpolate_depth_data(df, parameter_columns, interval_column,
 
         # Add to new dataframe
         new_df[item] = interp(new_depths)
+
+    return new_df
+
+
+def interpolate_depths_to_intervals(df, parameter_columns, new_depths,
+                                    depth_column='Depth', how='mean'):
+    """
+    A function that interpolates depth data onto a new set of depths
+
+    :param df: dataframe that is contains model parameters and depths
+    :param parameter_columns: sequence with column names for the parameters that
+    are to be interpolated eg. ['Conductivity', 'GAMMA_CALIBRATED]
+    :param depth_column: string with column names for existing depth values
+    :param new_depths: a numpy array with new intervals. Note that the new intervals
+    need have the same column names as the interval_cols
+    :param how: method of averaging values from the interval
+    ['mean', 'mode', 'median']
+
+    :return:
+    dataframe with new intervals and interpolated parameter values
+    """
+    # If the parameter input is a string and not a list make it a list
+    if isinstance(parameter_columns, ("".__class__, u"".__class__)):
+        parameter_columns = [parameter_columns]
+
+    new_df = pd.DataFrame(columns=parameter_columns)
+
+    new_df[['Depth_from', "Depth_to"]] = new_depths
+
+    for item in parameter_columns:
+
+        for i, (index, row) in enumerate(new_df.iterrows()):
+            # Get the depth top and bottow
+            depth_from, depth_to = row.Depth_from, row.Depth_to
+
+            # Subset the original dataframe
+            df_interval = df.loc[(df[depth_column] >= depth_from) &
+                                 (df[depth_column] <= depth_to)]
+            if how == 'mean':
+                new_df.at[index, item] = df_interval[item].mean()
+            elif how == 'median':
+                new_df.at[index, item] = df_interval[item].median()
+            elif how == 'mode':
+                new_df.at[index, item] = df_interval[item].mode()
 
     return new_df

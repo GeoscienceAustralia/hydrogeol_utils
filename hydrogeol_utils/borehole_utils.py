@@ -24,7 +24,7 @@ These are functions used to process borehole data. These are mostly based on bor
 database and processed using pandas dataframes or series
 '''
 import pandas as pd
-
+from shapely import wkt
 
 def extract_by_primary_key(df, primary_keys,
                            primary_key_column = 'borehole_id'):
@@ -55,9 +55,8 @@ def extract_by_primary_key(df, primary_keys,
 
 # Now load the various datasets
 
-def extract_sql_with_primary_key(table_name, columns,
-                                 connection, primary_keys,
-                                 primary_key_column = 'borehole_id'):
+def extract_sql_with_primary_key(table_name, columns, connection, primary_keys,
+                                 primary_key_column = 'borehole_id', verbose = True):
     """
     A function for creating a sql query using table names, columns,
     and primary key values
@@ -83,13 +82,14 @@ def extract_sql_with_primary_key(table_name, columns,
     query += primary_key_column
     query += " in ({});".format(st_key)
 
-    print(query)
+    if verbose:
+        print(query)
+
 
     # Execute query
     return pd.read_sql(query, connection)
 
-def extract_boreholes_within_geometry(table_name, connection,
-                                      geometry, columns = 'all'):
+def extract_boreholes_within_geometry(table_name, connection, geometry, columns = 'all', verbose = True):
     """
 
     :param table_name: borehole tableanme from sql database
@@ -121,6 +121,17 @@ def extract_boreholes_within_geometry(table_name, connection,
 
     query = query.format(geometry)
 
-    print(query)
+    if verbose:
+        print(query)
 
-    return pd.read_sql(query, connection)
+    # Extract as pandas dataframe
+    df = pd.read_sql(query, connection)
+
+    # Drop the useless bianry geometry and create a shapely object from the geomnetry
+    # column
+
+    df.drop(columns = ['geom'], inplace=True)
+
+    df['geometry'] = [wkt.loads(x) for x in df['geometry']]
+
+    return df

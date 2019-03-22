@@ -25,6 +25,7 @@ These are functions used to visualise hydrogeological data
 
 import netCDF4
 import math
+from math import log10, floor, pow
 import os
 import gc
 from scipy.interpolate import griddata
@@ -32,11 +33,15 @@ import numpy as np
 from geophys_utils._netcdf_line_utils import NetCDFLineUtils
 from geophys_utils._transect_utils import coords2distance
 from hydrogeol_utils import spatial_functions
+from geophys_utils import get_spatial_ref_from_wkt
 import h5py
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.cm as cm
 from matplotlib.patches import Rectangle
+import cartopy.crs as ccrs
+import cartopy.io.img_tiles as cimgt
+
 
 
 class ConductivitySectionPlot:
@@ -1089,12 +1094,11 @@ def add_custom_colourbar(ax, cmap, vmin, vmax, xlabel):
     ax.set_xlabel(xlabel)
 
 
-def plot_AEM_conductivity_profile(ax, conductivity_profile,
-                                  depth_top, doi=None, log_plot=True):
+def plot_1D_layered_model(ax, profile, depth_top, doi=None, log_plot=True):
     """
 
     :param ax: matplotlib axis
-    :param conductivity_profile: flat numpy array with conductivity values
+    :param profile: flat numpy array with layered values
     :param depth_top: flat numpy array with layer top values
     :param doi: float of depth of investigation
     :param log_plot: boolean: if True conductivity gets displayed in log space
@@ -1104,24 +1108,24 @@ def plot_AEM_conductivity_profile(ax, conductivity_profile,
     # First we want to expand the axes to get the layered
     # effect on the plot
 
-    cond_expanded = np.zeros(shape=2 * len(conductivity_profile) + 1,
+    prof_expanded = np.zeros(shape=2 * len(profile) + 1,
                              dtype=np.float)
 
-    cond_expanded[1:] = np.repeat(conductivity_profile, 2)
+    prof_expanded[1:] = np.repeat(profile, 2)
 
-    depth_expanded = (np.max(depth_top) + 10) * np.ones(shape=len(cond_expanded),
+    depth_expanded = (np.max(depth_top) + 10) * np.ones(shape=len(prof_expanded),
                                                         dtype=np.float)
 
     depth_expanded[:-1] = np.repeat(depth_top, 2)
 
     # PLot
-    ax.plot(cond_expanded, depth_expanded)
+    ax.plot(prof_expanded, depth_expanded)
 
     plt.gca().invert_yaxis()
 
     # Add depth of investigation if provided
     if doi is not None:
-        ax.hlines(doi, 0, np.max(cond_expanded),
+        ax.hlines(doi, 0, np.max(prof_expanded),
                   color='green', linestyles='dotted',
                   label='DOI')
 
@@ -1154,3 +1158,118 @@ def plot_downhole_log(ax, values, depth, log_plot=True,
     ax.grid(which='minor', linestyle=':', linewidth='0.5', color='grey')
 
     return ax
+
+
+def plot_point_dataset(utm_coords,
+                       utm_wkt,
+                       variable,
+                       utm_bbox=None,
+                       colourbar_label=None,
+                       plot_title=None,
+                       colour_scheme='binary',
+                       point_size=10,
+                       point_step=1
+                       ):
+    '''
+    Function to plot data points on a map.
+    @author: Andrew Turner & Alex Ip
+    @param utm_coords: coordiante array shape of (,2)
+    @param utm_wkt: well known text code for utm coordinates
+    @param variable numpy array of variable to plot
+    @param utm_bbox: UTM Bounding box of form [xmin, ymin, xmax, ymax] or None for all points. Default=None
+    @param colourbar_label:
+    @param plot_title: String to prefix before dataset title. Default=None for dataset title or dataset basename
+    @param colour_scheme: String specifying colour scheme for data points. Default='binary'
+    @param point_size: Point size for data points. Default=10
+    @param point_step: Point step between plotted points - used to skip points in dense datasets. Default=1
+    '''
+
+    def rescale_array(input_np_array, new_range_min=0, new_range_max=1):
+        old_min = input_np_array.min()
+        old_range = input_np_array.max() - old_min
+        new_range = new_range_max - new_range_min
+
+        scaled_np_array = ((input_np_array - old_min) / old_range * new_range) + new_range_min
+
+        return scaled_np_array
+
+    utm_zone = get_spatial_ref_from_wkt(utm_wkt).GetUTMZone()  # -ve for Southern Hemisphere
+    southern_hemisphere = (utm_zone < 0)
+    utm_zone = abs(utm_zone)
+    projection = ccrs.UTM(zone=utm_zone,
+                          southern_hemisphere=southern_hemisphere)
+    print('utm_zone = {}'.format(utm_zone))
+
+    # Set geographic range of plot
+    if utm_bbox is None:
+        utm_bbox = [
+            np.min(utm_coords[:, 0]),
+            np.min(utm_coords[:, 1]),
+            np.max(utm_coords[:, 0]),
+            np.max(utm_coords[:, 1])
+        ]
+        spatial_mask = np.ones(shape=variable.shape, dtype='Bool')
+    else:
+        spatial_mask = np.logical_and(np.logical_and((utm_bbox[0] <= utm_coords[:, 0]),
+                                                     (utm_coords[:, 0] <= utm_bbox[2])),
+                                      np.logical_and((utm_bbox[1] <= utm_coords[:, 1]),
+                                                     (utm_coords[:, 1] <= utm_bbox[3]))
+                                      )
+        utm_coords = utm_coords[spatial_mask]
+
+    print('{} points in UTM bounding box: {}'.format(np.count_nonzero(spatial_mask),
+                                                     utm_bbox))
+
+    colour_array = rescale_array(variable[spatial_mask], 0, 1)
+
+    fig = plt.figure(figsize=(30, 30))
+
+    ax = fig.add_subplot(1, 1, 1, projection=projection)
+
+    ax.set_title(plot_title)
+
+    # map_image = cimgt.OSM() # https://www.openstreetmap.org/about
+    # map_image = cimgt.StamenTerrain() # http://maps.stamen.com/
+    map_image = cimgt.QuadtreeTiles()
+    ax.add_image(map_image, 10)
+
+    # Compute and set regular tick spacing
+    range_x = utm_bbox[2] - utm_bbox[0]
+    range_y = utm_bbox[3] - utm_bbox[1]
+    x_increment = pow(10.0, floor(log10(range_x))) / 2
+    y_increment = pow(10.0, floor(log10(range_y))) / 2
+    x_ticks = np.arange((utm_bbox[0] // x_increment + 1) * x_increment,
+                        utm_bbox[2], x_increment)
+    y_ticks = np.arange((utm_bbox[1] // y_increment + 1) * y_increment,
+                        utm_bbox[3], y_increment)
+    plt.xticks(x_ticks, rotation=45)
+    plt.yticks(y_ticks)
+
+    # set the x and y axis labels
+    plt.xlabel("Eastings (m)", rotation=0, labelpad=20)
+    plt.ylabel("Northings (m)", rotation=90, labelpad=20)
+
+    # See link for possible colourmap schemes:
+    # https://matplotlib.org/examples/color/colormaps_reference.html
+    cm = plt.cm.get_cmap(colour_scheme)
+
+    # build a scatter plot of the specified data, define marker,
+    # spatial reference system, and the chosen colour map type
+    sc = ax.scatter(utm_coords[::point_step, 0],
+                    utm_coords[::point_step, 1],
+                    marker='o',
+                    c=colour_array[::point_step],
+                    s=point_size,
+                    alpha=0.9,
+                    transform=projection,
+                    cmap=cm
+                    )
+
+    # set the colour bar ticks and labels
+    cb = plt.colorbar(sc, ticks=[0, 1])
+    cb.ax.set_yticklabels([str(np.min(variable[spatial_mask])),
+                           str(np.max(variable[spatial_mask]))])
+    if colourbar_label is not None:
+        cb.set_label(colourbar_label)
+
+    plt.show()
