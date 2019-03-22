@@ -2,12 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="616524b5-6aea-4abc-9b0d-3e026e76957d" name="Default" comment="Fixed up some functions and added functionality">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hydrogeol_utils/borehole_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/hydrogeol_utils/borehole_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hydrogeol_utils/spatial_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/hydrogeol_utils/spatial_functions.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/notebooks/EastKimberley_borehole_data_integration.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/EastKimberley_borehole_data_integration.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/borehole_data_2_spatialite.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/borehole_data_2_spatialite.ipynb" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -46,7 +41,7 @@
         <entry file="file://$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="759">
-              <caret line="1274" column="14" lean-forward="true" selection-start-line="1274" selection-start-column="14" selection-end-line="1274" selection-end-column="14" />
+              <caret line="1274" column="14" selection-start-line="1274" selection-start-column="14" selection-end-line="1274" selection-end-column="14" />
               <folding>
                 <element signature="e#914#928#0" expanded="true" />
               </folding>
@@ -732,7 +727,7 @@
     <entry file="file://$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="759">
-          <caret line="1274" column="14" lean-forward="true" selection-start-line="1274" selection-start-column="14" selection-end-line="1274" selection-end-column="14" />
+          <caret line="1274" column="14" selection-start-line="1274" selection-start-column="14" selection-end-line="1274" selection-end-column="14" />
           <folding>
             <element signature="e#914#928#0" expanded="true" />
           </folding>
