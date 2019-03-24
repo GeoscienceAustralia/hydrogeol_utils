@@ -133,7 +133,7 @@ def tc_k_profile(mobile_water_content, total_water_content,
 def extract_snmr_inversions(acquisition_ids, connection, mask_below_doi=True):
 
     """
-    A function for exrtracting SNMR inversions from the SNMR database
+    A function for extracting SNMR inversions from the SNMR database
     using acquisitions ids within a spatial query
 
     :param acquisition_ids: primary key indices for the acquisition table
@@ -155,7 +155,7 @@ def extract_snmr_inversions(acquisition_ids, connection, mask_below_doi=True):
     # Otherwise we create a mask based on the doi in the invere_model_metadata table
     else:
         query = 'SELECT * FROM inverse_model_metadata WHERE acquisition_id IN (%s)' % placeholders
-        df_doi = pd.read_sql_query(query, connection, index_col='table_id',
+        df_doi = pd.read_sql_query(query, connection, index_col='inversion_id',
                                    params=tuple(acquisition_ids))
         # Note that since there is an issue with the inversion _id column in the inverison
         # table we are using the acquisition _id column
@@ -167,41 +167,52 @@ def extract_snmr_inversions(acquisition_ids, connection, mask_below_doi=True):
 
         return df_inversions.iloc[condition]
 
-def plot_wt(df, plot_title, doi= None):
+def plot_profile(ax, df, doi= None, plot_mobile_water = False):
     """
     Function for plotting SNMR profiles similarly to the GMR inversion
     software. This function allows customised plots and importantly
     the ability to include the doi.
 
+    :param ax: matplotlib axis
     :param df: individual inversion dataframe
-    :param plot_title: title of the plot
     :param doi: depth of investigation
+    :param plot_mobile_water: boolean flag for plotting
+    mobile water
     :return:
+    matplotlib axis with profile plotted
     """
-    # Create a figure
-    plt.close('all')
-    fig, ax = plt.subplots(figsize=(5, 4), dpi=150)
+
 
     # invert the y axix so that depth in a positive number
-    plt.gca().invert_yaxis()
+    #plt.gca().invert_yaxis()
 
     # define plot data using pandas series names
     y = df['Depth_from'].values
     Total = df['Total_water_content'].values * 100
-    Mobile = df['Mobile_water_content'].values * 100
-    Bound = df['Bound_water_content'].values * 100
+
+    if plot_mobile_water:
+        Mobile = df['Mobile_water_content'].values * 100
+        # Plot the data
+        ax.fill_betweenx(y, 0, Total,
+                         label='Bound H2O', facecolor='pink')
+        ax.fill_betweenx(y, 0, Mobile,
+                         label='Mobile H2O', facecolor='blue')
+    else:
+        ax.fill_betweenx(y, 0, Total,
+                         label='Mobile H2O', facecolor='blue')
+
 
     # set the range on the x axis so all the plots are the same scale
     ax.set_xlim([0, np.max(Total) + 5])
 
-    # Plot the data
-    ax.fill_betweenx(y, 0, Total,
-                     label='Bound H2O', facecolor='pink')
-    ax.fill_betweenx(y, 0, Mobile,
-                     label='Mobile H2O', facecolor='blue')
+
     # plot lines
     ax.plot(Total, y, 'k-', linewidth=0.5)
-    ax.plot(Mobile, y, 'k-', linewidth=0.5)
+
+    if plot_mobile_water:
+        ax.plot(Mobile, y, 'k-', linewidth=0.5)
+    else:
+        ax.plot(Total, y, 'k-', linewidth=0.5)
 
     # make legend
     ax.legend(fontsize=6)

@@ -1,0 +1,4 @@
+hydrogeol_utils.egg-info/PKG-INFO
+hydrogeol_utils.egg-info/SOURCES.txt
+hydrogeol_utils.egg-info/dependency_links.txt
+hydrogeol_utils.egg-info/top_level.txt

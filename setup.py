@@ -18,7 +18,7 @@
 Created on 9/1/2019
 @author: Neil Symington
 """
-from setuptools import setup
+from distutils.core import setup
 
 setup(name='hydrogeol_utils',
       version='0.1',
@@ -27,4 +27,15 @@ setup(name='hydrogeol_utils',
       url='https://github.com/Neil-Symington/hydrogeol_utils',
       author='Neil Symington',
       author_email='neil.symington@ga.gov.au',
+      requires = [
+            'matplotlib',
+            'netcdf4',
+            'numpy',
+            'pandas',
+            'shapely',
+            'scipy',
+            'setuptools',
+            'sqlalchemy'
+              ],
+      packages=['hydrogeol_utils'],
       license='Apache License Version 2.0')
