@@ -27,7 +27,6 @@ import numpy as np
 import pandas as pd
 from scipy import interpolate
 from scipy.spatial.ckdtree import cKDTree
-import collections
 
 def inverse_distance_weights(distance, power):
     """
@@ -172,6 +171,11 @@ def nearest_neighbours(points, coords, points_required = 1, max_distance = 250.)
     # iterate throught the points and find the nearest neighbour
     distances, indices = kdtree.query(points, k=points_required,
                                       distance_upper_bound=max_distance)
+    # Mask out infitnite distances in indices to avoid confusion
+    mask = ~np.isfinite(distances)
+
+    distances[mask] = np.nan
+
     return distances, indices
 
 

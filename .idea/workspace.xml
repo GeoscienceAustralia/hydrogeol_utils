@@ -2,6 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="616524b5-6aea-4abc-9b0d-3e026e76957d" name="Default" comment="Fixed up some functions and added functionality">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hydrogeol_utils/SNMR_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/hydrogeol_utils/SNMR_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hydrogeol_utils/borehole_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/hydrogeol_utils/borehole_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hydrogeol_utils/spatial_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/hydrogeol_utils/spatial_functions.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/notebooks/EastKimberley_borehole_data_integration.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/EastKimberley_borehole_data_integration.ipynb" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -16,8 +20,8 @@
       <file leaf-file-name="SNMR_utils.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/hydrogeol_utils/SNMR_utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="3927">
-              <caret line="233" selection-start-line="233" selection-end-line="233" />
+            <state relative-caret-position="3196">
+              <caret line="190" column="4" selection-start-line="190" selection-start-column="4" selection-end-line="190" selection-end-column="28" />
               <folding>
                 <element signature="e#926#945#0" expanded="true" />
               </folding>
@@ -37,11 +41,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="plotting_utils.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="plotting_utils.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="759">
-              <caret line="1274" column="14" selection-start-line="1274" selection-start-column="14" selection-end-line="1274" selection-end-column="14" />
+            <state relative-caret-position="18802">
+              <caret line="1123" column="4" selection-start-line="1123" selection-start-column="4" selection-end-line="1123" selection-end-column="28" />
               <folding>
                 <element signature="e#914#928#0" expanded="true" />
               </folding>
@@ -49,11 +53,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="borehole_utils.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="borehole_utils.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/hydrogeol_utils/borehole_utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="890">
-              <caret line="126" column="33" selection-start-line="126" selection-start-column="33" selection-end-line="126" selection-end-column="33" />
+            <state relative-caret-position="306">
+              <caret line="69" column="40" lean-forward="true" selection-start-line="69" selection-start-column="40" selection-end-line="69" selection-end-column="40" />
               <folding>
                 <element signature="e#1025#1044#0" expanded="true" />
               </folding>
@@ -64,29 +68,11 @@
       <file leaf-file-name="spatial_functions.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/hydrogeol_utils/spatial_functions.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="732">
-              <caret line="252" column="17" selection-start-line="252" selection-start-column="17" selection-end-line="252" selection-end-column="17" />
+            <state relative-caret-position="493">
+              <caret line="29" selection-start-line="29" selection-end-line="29" />
               <folding>
                 <element signature="e#898#916#0" expanded="true" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="setup.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/setup.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="663">
-              <caret line="39" column="35" selection-start-line="39" selection-start-column="35" selection-end-line="39" selection-end-column="35" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="requirements.txt" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/requirements.txt">
-          <provider selected="true" editor-type-id="text-editor">
-            <state>
-              <caret selection-end-line="8" />
             </state>
           </provider>
         </entry>
@@ -112,8 +98,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>thickness</find>
-      <find>'grid_distances'</find>
       <find>self</find>
       <find>gridding</find>
       <find>depth</find>
@@ -142,6 +126,8 @@
       <find>list</find>
       <find>doi</find>
       <find>log</find>
+      <find>plot_1D_layer</find>
+      <find>gca</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -156,16 +142,17 @@
         <option value="$PROJECT_DIR$/hydrogeol_utils/sptial_functions.py" />
         <option value="$PROJECT_DIR$/requirements.txt" />
         <option value="$PROJECT_DIR$/setup.py" />
-        <option value="$PROJECT_DIR$/hydrogeol_utils/SNMR_utils.py" />
         <option value="$PROJECT_DIR$/hydrogeol_utils/AEM_utils.py" />
-        <option value="$PROJECT_DIR$/hydrogeol_utils/borehole_utils.py" />
         <option value="$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py" />
+        <option value="$PROJECT_DIR$/hydrogeol_utils/SNMR_utils.py" />
         <option value="$PROJECT_DIR$/hydrogeol_utils/spatial_functions.py" />
+        <option value="$PROJECT_DIR$/hydrogeol_utils/borehole_utils.py" />
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds">
-    <option name="x" value="-74" />
+  <component name="ProjectFrameBounds" extendedState="6">
+    <option name="x" value="1889" />
+    <option name="y" value="48" />
     <option name="width" value="1936" />
     <option name="height" value="1050" />
   </component>
@@ -174,6 +161,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -186,16 +174,10 @@
               <item name="hydrogeol_utils" type="462c0819:PsiDirectoryNode" />
               <item name="hydrogeol_utils" type="462c0819:PsiDirectoryNode" />
             </path>
-            <path>
-              <item name="hydrogeol_utils" type="b2602c69:ProjectViewProjectNode" />
-              <item name="hydrogeol_utils" type="462c0819:PsiDirectoryNode" />
-              <item name="notebooks" type="462c0819:PsiDirectoryNode" />
-            </path>
           </expand>
           <select />
         </subPane>
       </pane>
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -317,7 +299,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-74" y="0" width="1936" height="1050" extended-state="0" />
+    <frame x="1912" y="-8" width="1936" height="1096" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.118229166" />
@@ -372,20 +354,8 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="663">
-          <caret line="39" column="35" selection-start-line="39" selection-start-column="35" selection-end-line="39" selection-end-column="35" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/requirements.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret selection-end-line="8" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/setup.py" />
+    <entry file="file://$PROJECT_DIR$/requirements.txt" />
     <entry file="file://$PROJECT_DIR$/hydrogeol_utils/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="374">
@@ -433,20 +403,8 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="663">
-          <caret line="39" column="35" selection-start-line="39" selection-start-column="35" selection-end-line="39" selection-end-column="35" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/requirements.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret selection-end-line="8" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/setup.py" />
+    <entry file="file://$PROJECT_DIR$/requirements.txt" />
     <entry file="file://$PROJECT_DIR$/hydrogeol_utils/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="374">
@@ -494,20 +452,8 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="646">
-          <caret line="38" column="16" selection-start-line="38" selection-start-column="16" selection-end-line="38" selection-end-column="16" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/requirements.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret selection-end-line="8" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/setup.py" />
+    <entry file="file://$PROJECT_DIR$/requirements.txt" />
     <entry file="file://$PROJECT_DIR$/hydrogeol_utils/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="374">
@@ -562,20 +508,8 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="646">
-          <caret line="38" column="16" selection-start-line="38" selection-start-column="16" selection-end-line="38" selection-end-column="16" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/requirements.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret selection-end-line="8" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/setup.py" />
+    <entry file="file://$PROJECT_DIR$/requirements.txt" />
     <entry file="file://$PROJECT_DIR$/hydrogeol_utils/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="374">
@@ -610,20 +544,8 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="646">
-          <caret line="38" column="16" selection-start-line="38" selection-start-column="16" selection-end-line="38" selection-end-column="16" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/requirements.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret selection-end-line="8" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/setup.py" />
+    <entry file="file://$PROJECT_DIR$/requirements.txt" />
     <entry file="file://$PROJECT_DIR$/hydrogeol_utils/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="374">
@@ -645,52 +567,18 @@
     <entry file="file://D:/GA/JupyterNotebooks/SNMR_spatialite.ipynb" />
     <entry file="file://$USER_HOME$/Anaconda3/envs/hydrogeol_utils/Lib/site-packages/pandas/core/frame.py" />
     <entry file="file://D:/GA/JupyterNotebooks/QueryEKSNMRspatialite.ipynb" />
-    <entry file="file://$PROJECT_DIR$/notebooks/probe_geophysical_relationships.ipynb">
-      <provider selected="true" editor-type-id="ipnb-editor">
-        <state>
-          <selected id="1" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/notebooks/probe_geophysical_relationships.ipynb" />
     <entry file="file://$PROJECT_DIR$/hydrogeol_utils/SNMR_inversion_utils.py" />
     <entry file="file://$PROJECT_DIR$/hydrogeol_utils/__inti__.py" />
     <entry file="file://$PROJECT_DIR$/hydrogeol_utils/sptial_functions.py" />
-    <entry file="file://$PROJECT_DIR$/notebooks/create_SNMR_spatialite-db.ipynb">
-      <provider selected="true" editor-type-id="ipnb-editor">
-        <state>
-          <selected id="0" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/notebooks/create_SNMR_spatialite-db.ipynb" />
     <entry file="file://$USER_HOME$/.PyCharmCE2018.3/system/python_stubs/2104340850/builtins.py" />
-    <entry file="file://$PROJECT_DIR$/setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="663">
-          <caret line="39" column="35" selection-start-line="39" selection-start-column="35" selection-end-line="39" selection-end-column="35" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/requirements.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret selection-end-line="8" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/setup.py" />
+    <entry file="file://$PROJECT_DIR$/requirements.txt" />
     <entry file="file://$PROJECT_DIR$/hydrogeol_utils/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="374">
           <caret line="22" selection-start-line="22" selection-end-line="22" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/hydrogeol_utils/SNMR_utils.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="3927">
-          <caret line="233" selection-start-line="233" selection-end-line="233" />
-          <folding>
-            <element signature="e#926#945#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -704,32 +592,42 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/hydrogeol_utils/borehole_utils.py">
+    <entry file="file://$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="890">
-          <caret line="126" column="33" selection-start-line="126" selection-start-column="33" selection-end-line="126" selection-end-column="33" />
+        <state relative-caret-position="18802">
+          <caret line="1123" column="4" selection-start-line="1123" selection-start-column="4" selection-end-line="1123" selection-end-column="28" />
           <folding>
-            <element signature="e#1025#1044#0" expanded="true" />
+            <element signature="e#914#928#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/hydrogeol_utils/SNMR_utils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3196">
+          <caret line="190" column="4" selection-start-line="190" selection-start-column="4" selection-end-line="190" selection-end-column="28" />
+          <folding>
+            <element signature="e#926#945#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/hydrogeol_utils/spatial_functions.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="732">
-          <caret line="252" column="17" selection-start-line="252" selection-start-column="17" selection-end-line="252" selection-end-column="17" />
+        <state relative-caret-position="493">
+          <caret line="29" selection-start-line="29" selection-end-line="29" />
           <folding>
             <element signature="e#898#916#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py">
+    <entry file="file://$PROJECT_DIR$/hydrogeol_utils/borehole_utils.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="759">
-          <caret line="1274" column="14" selection-start-line="1274" selection-start-column="14" selection-end-line="1274" selection-end-column="14" />
+        <state relative-caret-position="306">
+          <caret line="69" column="40" lean-forward="true" selection-start-line="69" selection-start-column="40" selection-end-line="69" selection-end-column="40" />
           <folding>
-            <element signature="e#914#928#0" expanded="true" />
+            <element signature="e#1025#1044#0" expanded="true" />
           </folding>
         </state>
       </provider>
