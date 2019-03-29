@@ -27,7 +27,9 @@ import numpy as np
 import pandas as pd
 from scipy import interpolate
 from scipy.spatial.ckdtree import cKDTree
-import collections
+import rasterio
+from rasterio import Affine
+from rasterio.warp import reproject, Resampling
 
 def inverse_distance_weights(distance, power):
     """
@@ -251,3 +253,61 @@ def interpolate_depths_to_intervals(df, parameter_columns, new_depths,
                 new_df.at[index, item] = df_interval[item].mode()
 
     return new_df
+
+
+def resample_raster(infile, outfile, gridx, gridy, driver='GTiff',
+                 null = -999):
+    """
+    A function for resampling a raster onto a regular grid with the same
+    crs
+
+    :param infile: input raster path
+    :param outfile: output raster path
+    :param gridx: numpy array of grid x coordinates
+    :param gridy: numpy array of grid y coordinates
+    :param driver: rasterio driver
+    :param null: value to be replaced by null in the grid
+
+    """
+    # Open
+    src = rasterio.open(infile)
+
+    # Extract data as an array
+    arr = src.read()[0]
+
+    # Get the affine
+    aff = src.transform
+
+    # Define the affine for the kriged dataset
+    newaff = Affine(gridx[1] - gridx[0], 0, np.min(gridx),
+                    0, gridy[1] - gridy[0], np.max(gridy))
+
+    # Create new array with the grid
+    # coordinates from the kriging
+    newarr = np.empty(shape=(gridy.shape[0],
+                             gridx.shape[0]))
+
+    # Reproject
+    reproject(
+        arr, newarr,
+        src_transform=aff,
+        dst_transform=newaff,
+        src_crs=src.crs,
+        dst_crs=src.crs,
+        resampling=Resampling.bilinear)
+
+    src.close()
+
+    # Do some post processing
+    newarr[np.abs(newarr - null) < 0.0001] = np.nan
+
+    src.close()
+
+    # Create a new dataset
+    new_dataset = rasterio.open(outfile, 'w', driver=driver,
+                                height=newarr.shape[0], width=newarr.shape[1],
+                                count=1, dtype=newarr.dtype,
+                                crs=src.crs, transform=newaff)
+    new_dataset.write(newarr, 1)
+
+    new_dataset.close()
