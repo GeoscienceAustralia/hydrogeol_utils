@@ -35,7 +35,9 @@ setup(name='hydrogeol_utils',
             'shapely',
             'scipy',
             'setuptools',
-            'sqlalchemy'
+            'sqlalchemy',
+            'rasterio',
+            'cartopy'
               ],
       packages=['hydrogeol_utils'],
       license='Apache License Version 2.0')
