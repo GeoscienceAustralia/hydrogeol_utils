@@ -1273,3 +1273,519 @@ def plot_point_dataset(utm_coords,
         cb.set_label(colourbar_label)
 
     plt.show()
+
+
+def getMaxDepth(data):
+    """
+    A quick helper function to loop through a dict of dataframes and extract the largest (deepest) depth value
+    Will hopefully be deprecated in the future when a drilled depth field is added to header
+
+    :param: data, a dict of dataframes to be checked for max depth
+
+    :return: floating point number of the biggest depth value in the input data
+    """
+    # A place to store all the depths extracted from the dataframes
+    depth_data = []
+    for table in data.keys():
+        # All the possible column names that store depth data
+        # Not all depth columns will be in each table, hence the try/except statements
+        if table == 'aem':
+            continue
+        for column in ['Depth_from', 'Depth_to', 'Depth']:
+            try:
+                depth_data.append(data[table][column].values)
+            except KeyError:
+                continue
+    # this will still have negative values for above ground construction
+    depths = np.concatenate(depth_data)
+    return depths.max()
+
+
+def getGLElevation(header):
+    """
+    Quick function to extract the ground elevation from the header
+    """
+    return header.loc[0, 'Ground_elevation_mAHD']
+
+
+def axisBuilder(axis_name, data):
+    """
+    Function to call the relevant drawing function based on the input request
+    """
+    if axis_name == 'cond':
+        return drawDownHoleConds(data['indgam'])
+    if axis_name == 'gamma':
+        return drawGamma(data['indgam'])
+    if axis_name == 'nmr':
+        return drawNMR(data['javelin'])
+    if axis_name == 'lith':
+        return drawLith(data['lithology'])
+    if axis_name == 'construction':
+        return drawConstruction(data['construction'])
+    if axis_name == 'EC':
+        return drawPoreFluidEC(data['porefluid'])
+    if axis_name == 'pH':
+        return drawPoreFluidpH(data['porefluid'])
+    if axis_name == 'magsus':
+        return drawMagSus(data['magsus'])
+    if axis_name == 'AEM':
+        return drawAEMConds(data['aem'])
+
+
+def getLastSWL(waterlevels):
+    """
+    A function to extract the datetime and level of the most recent waterlevel on record for that hole
+    """
+    # Sort all waterlevels by date
+    waterlevels = waterlevels.sort_values(['Date'])
+    # Extract the last water level
+    last_waterlevel = waterlevels['Depth'].iloc[-1]
+    # Extract the last timestamp
+    last_wl_datetime = waterlevels['Date'].iloc[-1]
+    return last_waterlevel, last_wl_datetime
+
+
+def remove_inner_ticklabels(fig):
+    """
+    A function to strip off the tick marks and labels from any axis that is not clear to the left
+    """
+    for ax in fig.axes:
+        try:
+            ax.label_outer()
+        except:
+            pass
+
+
+def make_header_table(header, values_per_row=2):
+    '''
+    Function to turn the first row of pandas Dataframe into a table for display in a matplotlib figure
+
+
+    :param: header, a pandas DataFrame, only the first row will be used
+    :param: values_per_row, defines how many key/value pairs are in each returned row. Default is 2, ie 4 columns in table
+
+    :return:
+    A 2 dimensional list with key/value pairs in adjacent cells.
+    Width of table is defined as input parameter.
+    Length of table adapts to number of columns in input header dataframe
+
+
+    NOTE: should be rewritten to use simple reshaping of np.array
+    '''
+
+    def my_round(arg, dps):
+        '''
+        Quick rounding function that rounds a float to the requested precision and returns it as a string
+        '''
+        if isinstance(arg, float):
+            return str(round(arg, dps))
+        else:
+            return arg
+
+    # Convert header dataframe into pd.Series type
+    s_header = header.iloc[0]
+    # Clean up columns that we don't want displayed in table
+    s_header = s_header.drop(['geom', 'geometry'])
+    # Create a list with the desired numbers of rows, each row is an empty list at this point
+    table_vals = [[]] * math.ceil(len(s_header) / values_per_row)
+
+    # Iterate over series
+    for i, (key, val) in enumerate(s_header.iteritems()):
+        # Calculate the row that the values will be stored in
+        row = (i - 1) // values_per_row
+        # Add the new values (as a list) to the existing row (also a list)
+        table_vals[row] = table_vals[row] + [my_round(key, 4), my_round(val, 4)]
+    # If the length of the row isn't filled yet
+    if len(table_vals[-1]) != values_per_row * 2:
+        # Extend it by
+        table_vals[-1].extend([''] * (values_per_row * 2 - len(table_vals[-1])))
+    return table_vals
+
+
+def drawConstruction(construction):
+    """
+    The function to draw bore construction onto an axes object.
+    This is a simplified version of some much more complex code.
+    This version only deals with lining and screens in a single casing string.
+    Casing protectors are not drawn, and nested piezos are drawn wrong.
+
+    :param: construction, a dataframe containing the construction data of the borehole
+
+    :return:
+    matplotlib axes object with the appropriate shapes drawn onto it
+    """
+    # only interested in drawing lining or screen, so cut the rest
+    construction = construction[construction['Construction_type'].isin(['lining', 'inlet'])]
+    # only interested in drawing below ground level, so remove above ground values
+    construction.loc[construction[construction['Depth_from'] < 0].index, 'Depth_from'] = 0
+
+    # create a set of axes and format accordingly
+    plt.plot()
+    ax = plt.gca()
+    ax.set_xlim([-0.1, 1.1])
+    ax.set_xlabel('Construction')
+    ax.set_xticks([])
+
+    for _, ctype in construction.iterrows():
+        # define width of construction as a % of axes width
+        left = 0.2
+        right = 0.8
+        top = ctype['Depth_from']
+        bottom = ctype['Depth_to']
+
+        if ctype['Construction_type'] == 'lining':
+            casing = LineCollection([[[left, top], [left, bottom]], [[right, top], [right, bottom]]], color='black')
+            ax.add_collection(casing)
+        if ctype['Construction_type'] == 'inlet':
+            screen = mPolygon([[left, top], [right, top], [right, bottom], [left, bottom]],
+                              closed=True, hatch='---', edgecolor='black', linestyle='solid',
+                              facecolor='white')
+            ax.add_patch(screen)
+    return ax
+
+
+def drawLith(lithology):
+    """
+    Function to draw the lithology of a borehole.
+    This function relies very heavily on the lookup table defined in the nested function buildLithPatches
+    There is definite need to make this a more comprehensive lookup table, probably configured via spreadsheet.
+    See \\prod.lan\active\proj\futurex\Common\ScriptsAndTools\Borehole_Data_Consolidation_CompositeLogs\Scripts\lithologydisplaymapping.xlsx
+
+    :param: lithology, a dataframe containing the lithology intervals for the borehole
+    :return:
+    matplotlib axes object with the lithology drawn on as coloured, patterned polygons
+    """
+
+    def buildLithPatches(lithology):
+        lithsymbols = {'sandstone': {'facecolor': 'yellow', 'edgecolor': 'None', 'linestyle': 'None', 'hatch': '.'},
+                       'sand': {'facecolor': 'yellow', 'edgecolor': 'None', 'linestyle': 'None', 'hatch': '.'},
+                       'conglomerate': {'facecolor': 'yellow', 'edgecolor': 'None', 'linestyle': 'None', 'hatch': 'o'},
+                       'siltstone': {'facecolor': 'green', 'edgecolor': 'None', 'linestyle': 'None', 'hatch': '-'},
+                       'clay': {'facecolor': 'lightgrey', 'edgecolor': 'None', 'linestyle': 'None', 'hatch': '-'},
+                       'shale': {'facecolor': 'grey', 'edgecolor': 'None', 'linestyle': 'None', 'hatch': '-'},
+                       'mudstone': {'facecolor': 'lightgrey', 'edgecolor': 'None', 'linestyle': 'None', 'hatch': '-'},
+                       'soil': {'facecolor': 'brown', 'edgecolor': 'None', 'linestyle': 'None', 'hatch': ''},
+                       'unknown': {'facecolor': 'lightgrey', 'edgecolor': 'black', 'linestyle': '-', 'hatch': ''},
+                       'silty sand': {'facecolor': 'khaki', 'edgecolor': 'None', 'linestyle': 'None', 'hatch': ''},
+                       'granite': {'facecolor': 'pink', 'edgecolor': 'None', 'linestyle': 'None', 'hatch': '+'}}
+
+        patches = []
+        labels = []
+        drawn_lithtypes = []
+
+        for _, lith_row in lithology.iterrows():
+            # Always want the lithology to fill the axes
+            left = 0
+            right = 1
+            # Update the top and bottom for each row
+            top = lith_row['Depth_from']
+            bottom = lith_row['Depth_to']
+            # Extract lithology info
+            lith = lith_row['Lithology_name']
+            # Apply lithology to lookup
+            if lith not in lithsymbols.keys():
+                simp_lith = 'unknown'
+            else:
+                simp_lith = lith
+            # Don't want to double up on legend, so if lithology has already been drawn, keep track of this
+            if simp_lith not in drawn_lithtypes:
+                drawn_lithtypes.append(simp_lith)
+                # Add the patch to the patch collection
+            patches.append(mPolygon([[left, top], [right, top], [right, bottom], [left, bottom]],
+                                    closed=True, **lithsymbols[simp_lith]))
+            # If the lithology isn't in the lookup table, add a label for what the actual lithology is
+            if simp_lith == 'unknown':
+                labels.append([0.05, (bottom + top) / 2, lith_row['Lithology_name']])
+        # Define the legend for the lithology
+        leg_patches = [mpatches.Patch(color=lithsymbols[simp_lith]['facecolor'], hatch=lithsymbols[simp_lith]['hatch'],
+                                      label=simp_lith) for simp_lith in drawn_lithtypes]
+
+        return patches, labels, leg_patches
+
+    # Setup the axes as required
+    plt.plot()
+    ax = plt.gca()
+    ax.set_xticks([])
+    ax.set_xlabel([])
+    ax.set_xlim([0, 1])
+    ax.set_xlabel('Lithology')
+
+    # Get the required inputs from the nested function
+    polys, labels, leg_patches = buildLithPatches(lithology)
+    # Need to loop through as for some reason ax.add_patch_collection() wasn't working
+    for poly in polys:
+        ax.add_patch(poly)
+    # Add the labels
+    for x, y, s in labels:
+        ax.text(x, y, s)
+    ax.legend(handles=leg_patches, loc='lower center')
+
+    return ax
+
+
+def drawNMR(javelin):
+    """
+    Function to draw the downhole NMR (aka Javelin) inversion results for a single borehole
+
+    Water content results are typically drawn as stacked area charts, with clay bound water first
+    and progressively freer water stacked ontop. This has been done by drawing polygons defined
+    by the origin vertical axis, the clay content, the clay + capilliary water content and the
+    total water content.
+
+    :param: javelin, a DataFrame with the calculated water content results and depth stored
+    :return:
+    matplotlib axes function with the water contents plotted as polygons
+    """
+    # make coordinate pairs for each quantity
+    clay = list(zip(javelin['Clay_water_content'], javelin['Depth']))
+    capillary = list(zip(javelin['Capillary_water_content'], javelin['Depth']))
+    total = list(zip(javelin['Total_water_content'], javelin['Depth']))
+    # sum clay and capillary to give the inside edge x values for mobile
+    clay_cap_sum = list(
+        zip(javelin['Capillary_water_content'].values + javelin['Clay_water_content'].values, javelin['Depth']))
+
+    # make polygons for each quantity
+    # The clay bound water polygon is defined by the vertical axes, and the calculated clay bound water content by depth
+    p1 = mpatches.Polygon([[0, clay[0][1]]] + clay + [[0, clay[-1][1]]], closed=True, color='lightblue')
+    # The capillary bound water polygon is defined by the clay
+    p2 = mpatches.Polygon(clay + clay_cap_sum[::-1], closed=True, color='blue')
+    p3 = mpatches.Polygon(clay_cap_sum + total[::-1], closed=True, color='darkblue')
+
+    nmr_legend = collections.OrderedDict(
+        (('clay bound water', 'lightblue'), ('capillary bound water', 'blue'), ('free water', 'darkblue')))
+    leg_patches = [mpatches.Patch(color=value, label=key) for key, value in nmr_legend.items()]
+
+    plt.plot()
+    ax = plt.gca()
+    ax.add_patch(p1)
+    ax.add_patch(p2)
+    ax.add_patch(p3)
+    ax.set_xlabel('Water Fraction')
+    ax.grid(True)
+    ax.xaxis.tick_top()
+    ax.set_xlim([0.5, 0])
+    ax.legend(handles=leg_patches, loc='lower center')
+    return ax
+
+
+def drawDownHoleConds(indgam):
+    plt.plot(indgam['Apparent_conductivity'], indgam['Depth'], label='Conductivity', linestyle='-', color='blue')
+    ax = plt.gca()
+    ax.set_xlabel('Conductivity (S/m)')
+    ax.set_xscale('log')
+    ax.grid(True)
+    ax.xaxis.tick_top()
+
+    return ax
+
+
+def drawAEMConds(aem):
+    tops = list(zip(aem['Bulk_conductivity'], aem['Depth_from']))
+    bots = list(zip(aem['Bulk_conductivity'], aem['Depth_to']))
+    coords = []
+    for i in range(len(tops)):
+        coords.append(tops[i])
+        coords.append(bots[i])
+    coords = np.array(coords)
+    plt.plot(coords[:, 0], coords[:, 1], '-')
+    ax = plt.gca()
+    ax.set_xlabel('Conductivity (S/m)')
+    ax.set_xscale('log')
+    ax.grid(True)
+    ax.xaxis.tick_top()
+
+    return ax
+
+
+def drawGamma(indgam):
+    if indgam['GR'].notna().any():
+        gam_col = 'GR'
+        gam_unit = 'API'
+    else:
+        gam_col = 'Gamma_calibrated'
+        gam_unit = 'counts per second'
+    plt.plot(indgam[gam_col], indgam['Depth'], label=gam_col, linestyle='-', color='red')
+    ax = plt.gca()
+    ax.set_xlabel('Natural Gamma Ray ({})'.format(gam_col, gam_unit))
+    ax.grid(True)
+    ax.xaxis.tick_top()
+    return ax
+
+
+def drawPoreFluidpH(porefluid):
+    plt.plot()
+    ax = plt.gca()
+    ax.grid(True)
+    ax.set_xlabel('Porefluid pH (pH)')
+    ax.plot(porefluid['pH'], porefluid['Depth'], marker='.')
+    ax.xaxis.tick_top()
+    return ax
+
+
+def drawPoreFluidEC(porefluid):
+    plt.plot()
+    ax = plt.gca()
+    ax.grid(True)
+    ax.set_xlabel('Porefluid EC (S/m)')
+    ax.plot(porefluid['EC'], porefluid['Depth'], marker='.')
+    ax.xaxis.tick_top()
+    return ax
+
+
+def drawMagSus(magsus):
+    plt.plot()
+    ax = plt.gca()
+    ax.grid(True)
+    ax.set_xlabel('Magnetic Susceptibiliy')
+    ax.plot(magsus['Magnetic_susceptibility'], magsus['Depth'], marker='.')
+    ax.xaxis.tick_top()
+    return ax
+
+
+def drawCompLog(data, output_path=None):
+    header = data['header']
+
+    # load GA and EFTF logos for placement on the logs
+    ga = mpimg.imread(
+        r'\\prod.lan\active\proj\futurex\Common\ScriptsAndTools\Borehole_Data_Consolidation_CompositeLogs\StandardInputs\ga-logo.jpg')
+    new_height = [int(dim / 2) for dim in ga.shape[0:2]][0:2]
+    ga = resize(ga, new_height)
+    eftf = mpimg.imread(
+        r'\\prod.lan\active\proj\futurex\Common\ScriptsAndTools\Borehole_Data_Consolidation_CompositeLogs\StandardInputs\eftf-logo.png')
+
+    # booleans for sectioning the code later
+    hasConductivity = bool(header.loc[0, 'Induction_acquired'])
+    hasGamma = bool(header.loc[0, 'Gamma_acquired'])
+    hasLith = bool(header.loc[0, 'Lithology_available'])
+    hasNMRLogs = bool(header.loc[0, 'Javelin_acquired'])
+    hasConstructionLogs = bool(header.loc[0, 'Construction_available'])
+    hasPoreWaterChem = bool(header.loc[0, 'EC_pH_acquired'])
+    hasWL = bool(header.loc[0, 'SWL_available'])
+    hasTimeSeries = hasWL and len(data['waterlevels']) > 2
+    hasAEMConductivity = bool(header.loc[0, 'AEM_conductivity_available'])
+    hasMagSus = bool(header.loc[0, 'MagSus_available'])
+
+    # key parameters for during plotting
+    hole_name = header.loc[0, 'Borehole_name']
+    max_depth = math.ceil(getMaxDepth(data))
+    metres_per_inch = 5
+    figlength = 4.5 + max_depth / metres_per_inch
+    elevation = getGLElevation(data['header'])
+    if hasWL:
+        swl, swl_time = getLastSWL(data['waterlevels'])
+    # row ratios in the gridspec
+    header_height = 2.5
+    if hasTimeSeries:
+        timelog_height = 2
+    else:
+        timelog_height = 0
+    depthlog_height = figlength - (header_height - timelog_height)
+
+    if hasTimeSeries:
+        height_ratios = [header_height, depthlog_height, timelog_height]
+    else:
+        height_ratios = [header_height, depthlog_height]
+    nrows = len(height_ratios)
+
+    # column ratios in the gridspec
+    # the order of these boolean evaluations dictates the order of the axes from left to right
+    width_ratios = []
+    chart_col_order = []
+    if hasGamma:
+        width_ratios.append(3)
+        chart_col_order.append('gamma')
+    if hasConductivity:
+        width_ratios.append(3)
+        chart_col_order.append('cond')
+    if hasAEMConductivity:
+        width_ratios.append(3)
+        chart_col_order.append('AEM')
+    if hasNMRLogs:
+        width_ratios.append(3)
+        chart_col_order.append('nmr')
+    if hasLith:
+        width_ratios.append(2)
+        chart_col_order.append('lith')
+    if hasConstructionLogs:
+        width_ratios.append(1)
+        chart_col_order.append('construction')
+    if hasPoreWaterChem:
+        width_ratios.append(2)
+        width_ratios.append(2)
+        chart_col_order.append('EC')
+        chart_col_order.append('pH')
+    if hasMagSus:
+        width_ratios.append(2)
+        chart_col_order.append('magsus')
+
+    # defining the figure size
+    figwidth = max(8, int(sum(width_ratios) * (2 / 3)))
+    figsize = [figwidth, figlength]
+
+    width_ratios = width_ratios if len(width_ratios) > 0 else [1]
+    ncols = len(width_ratios)
+    SWLlabelaxis = int(ncols / 2)
+    gs = gridspec.GridSpec(nrows=nrows, ncols=ncols, width_ratios=width_ratios, height_ratios=height_ratios)
+
+    fig = plt.figure(figsize=figsize)
+    fig.suptitle(hole_name + ' Composite Log', size=22)
+
+    # the code to add the images so they display well when saved to a file!
+    fig.figimage(ga, xo=0.3 * ga.shape[0], yo=fig.bbox.ymax - 1.5 * ga.shape[0])
+    fig.figimage(eftf, xo=fig.bbox.xmax - 3 * eftf.shape[0], yo=fig.bbox.ymax - 2 * eftf.shape[0])
+
+    axt = fig.add_subplot(gs[0, :])
+    table = plt.table(cellText=make_header_table(header), loc='center')
+    table.auto_set_font_size(False)
+    table.set_fontsize(12)
+    axt.axis('off')
+
+    axs = []
+    for i, key in enumerate(chart_col_order):
+        if i == 0:
+            ax = fig.add_subplot(gs[1, i])
+            ax.set_ylabel('Depth (m)')
+            ax.set_ylim([max_depth, 0])  # sets the range for the logs and inverts the axes
+        else:
+            ax = fig.add_subplot(gs[1, i], sharey=axs[0])
+            # pinched from https://stackoverflow.com/questions/20416609/remove-the-x-axis-ticks-while-keeping-the-grids-matplotlib
+            # don't really understand what it does
+            for tic in ax.yaxis.get_major_ticks():
+                tic.tick1On = tic.tick2On = False
+                tic.label1On = tic.label2On = False
+        ax = axisBuilder(key, data)
+        ax.xaxis.set_label_position('top')
+        if hasWL:
+            # draw a blue line across the depth logs at the last known standing water level
+            # add the line
+            ax.axhline(y=swl, color='darkblue')
+
+        axs.append(ax)
+
+    # if hasWL:
+    # # create the label that should be printed below the line
+    # swl_label = 'DTW @ ' + str(swl_time) + ' was\n' + str(round(swl,3)) + ' m below surface'
+    # # add the label as text to the middle axes after the loop, so it spreads over multiple axes easily
+    # axs[SWLlabelaxis].text(x = ax.get_xlim()[0], y = swl - 0.5, s = swl_label,
+    # bbox=dict(facecolor='white', alpha = 0.5, zorder = -1))
+
+    #     set up the AHD axis
+    ax0 = axs[0].twinx()
+    ax0.spines['right'].set_position(('axes', -0.42))
+    ax0.set_ylim([elevation - max_depth, elevation])
+    ax0.set_ylabel('Elevation (m AHD)', labelpad=-40)
+
+    if hasTimeSeries:
+        ax7 = fig.add_subplot(gs[2, :])
+        sorted_swl = data['waterlevels'].sort_values('Date')
+        ax7.plot(sorted_swl['Date'], sorted_swl['Depth'], marker='.', linestyle='-', color='blue')
+        ax7.set_ylabel('Depth To Water (m Below Ground Level)')
+
+    fig.subplots_adjust(wspace=0)
+    remove_inner_ticklabels(fig)
+    if output_path is not None:
+        plt.savefig(output_path + '.svg')
+        plt.savefig(output_path + '.png')
+    else:
+        plt.show()
+    plt.close('all')
