@@ -135,3 +135,85 @@ def extract_boreholes_within_geometry(table_name, connection, geometry, columns 
     df['geometry'] = [wkt.loads(x) for x in df['geometry']]
 
     return df
+
+
+def extract_all_boredata_by_simple_query(con, primary_key, primary_key_column='borehole_id', tables='all'):
+    """
+    A function for extracting all the data in the boreholes spatialite data schema associated with a single borehole.
+
+    :param con: The connection object to the borehole spatialite database
+    :primary_key: The primary key the borehole of interest
+    :primary_key_column: The name of the column used for the SQL query that generates the result
+    :tables: A list of tables that should be queried to extract the borehole data from. Defaults to all
+
+    :returns: A dict of dataframes, one for each table queried
+    """
+
+    def makeHeader_Query(bhid):
+        return "select * from borehole where {} = {}".format(primary_key_column, bhid)
+
+    def makeConstruction_Query(bhid):
+        return "select * from borehole_construction where {} = {}".format(primary_key_column, bhid)
+
+    def makeLithology_Query(bhid):
+        return "select * from borehole_lithology where {} = {}".format(primary_key_column, bhid)
+
+    def makeJavelin_Query(bhid):
+        return "select * from boreholeNMR_data where {} = {}".format(primary_key_column, bhid)
+
+    # The two hylogger queries are commented out as the tables don't currently exist in the borehole database
+    # Double check the borehole_id column name (previously was Borehole_ENO) which would break this code
+    # def makeHyLogChips_Query(bhid):
+    #     return "select * from Hylogging_data_from_chips where {} = {}".format(primary_key_column, bhid)
+
+    # def makeHyLogCore_Query(bhid):
+    #     return "select * from Hylogging_data_from_core where {} = {}".format(primary_key_column, bhid)
+
+    def makeIndGam_Query(bhid):
+        return "select * from induction_gamma_data where {} = {}".format(primary_key_column, bhid)
+
+    def makePoreFluid_Query(bhid):
+        return "select * from pore_fluid_EC_pH where {} = {}".format(primary_key_column, bhid)
+
+    def makeWaterLevel_Query(bhid):
+        return "select * from standing_water_level where {} = {}".format(primary_key_column, bhid)
+
+    def makeAEMConductivty_Query(bhid):
+        return "select * from representative_AEM_bulk_conductivity where {} = {}".format(primary_key_column, bhid)
+
+    def makeMagSus_Query(bhid):
+        return "select * from magnetic_susceptibility where {} = {}".format(primary_key_column, bhid)
+
+    data_gathering_functions = {'header': makeHeader_Query,
+                                'construction': makeConstruction_Query,
+                                'lithology': makeLithology_Query,
+                                'javelin': makeJavelin_Query,
+                                #                             'hylogchips' : makeHyLogChips_Query,
+                                #                             'hylogcore' : makeHyLogCore_Query,
+                                'indgam': makeIndGam_Query,
+                                'porefluid': makePoreFluid_Query,
+                                'waterlevels': makeWaterLevel_Query,
+                                'aem': makeAEMConductivty_Query,
+                                'magsus': makeMagSus_Query}
+    if tables != 'all':
+        # If a valid subset of tables is requested, update dict accordingly
+        if set(tables).issubset(data_gathering_functions.keys()):
+            data_gathering_functions = {tablename: data_gathering_functions[tablename] for tablename in tables}
+        else:
+            # If not, create a list of the invalid table names requested, format it nicely, and return an error
+            bad_names = str([tablename for tablename in tables if tablename not in data_gathering_functions.keys()])[
+                        1:-1]
+            raise KeyError(
+                'The following requested table names did not exactly match with table names in the requested database. {}'.format(
+                    bad_names))
+
+    # Loop through all the tables requested and if the length of the query result > 0, save the result.
+    # This is essentially the same as checking the hasData flags in the header table, but saves some typing
+    data = {}
+    for name, function in data_gathering_functions.items():
+        df = pd.read_sql_query(function(primary_key), con)
+        if len(df) == 0:
+            continue
+        else:
+            data[name] = df
+    return data
