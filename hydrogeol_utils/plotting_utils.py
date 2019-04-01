@@ -27,6 +27,7 @@ import netCDF4
 import math
 from math import log10, floor, pow
 import os
+import collections
 import gc
 from scipy.interpolate import griddata
 import numpy as np
@@ -35,10 +36,20 @@ from geophys_utils._transect_utils import coords2distance
 from hydrogeol_utils import spatial_functions
 from geophys_utils import get_spatial_ref_from_wkt
 import h5py
+
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.cm as cm
 from matplotlib.patches import Rectangle
+import matplotlib.gridspec as gridspec
+import matplotlib.patches as mpatches
+from matplotlib.patches import Polygon as mPolygon
+from matplotlib.collections import PatchCollection, LineCollection
+import matplotlib.image as mpimg
+import matplotlib.text as mtext
+
+from skimage.transform import resize
+
 import cartopy.crs as ccrs
 import cartopy.io.img_tiles as cimgt
 
