@@ -1603,7 +1603,7 @@ def drawAEMConds(aem):
     coords = np.array(coords)
     plt.plot(coords[:, 0], coords[:, 1], '-')
     ax = plt.gca()
-    ax.set_xlabel('Conductivity (S/m)')
+    ax.set_xlabel('Modelled AEM\nConductivity (S/m)')
     ax.set_xscale('log')
     ax.grid(True)
     ax.xaxis.tick_top()
@@ -1682,7 +1682,7 @@ def drawCompLog(data, output_path=None):
     # key parameters for during plotting
     hole_name = header.loc[0, 'Borehole_name']
     max_depth = math.ceil(getMaxDepth(data))
-    metres_per_inch = 5
+    metres_per_inch = 2.5
     figlength = 4.5 + max_depth / metres_per_inch
     elevation = getGLElevation(data['header'])
     if hasWL:
@@ -1706,26 +1706,26 @@ def drawCompLog(data, output_path=None):
     width_ratios = []
     chart_col_order = []
     if hasGamma:
-        width_ratios.append(3)
+        width_ratios.append(3.5)
         chart_col_order.append('gamma')
     if hasConductivity:
-        width_ratios.append(3)
+        width_ratios.append(3.5)
         chart_col_order.append('cond')
     if hasAEMConductivity:
-        width_ratios.append(3)
+        width_ratios.append(3.5)
         chart_col_order.append('AEM')
     if hasNMRLogs:
-        width_ratios.append(3)
+        width_ratios.append(3.5)
         chart_col_order.append('nmr')
     if hasLith:
-        width_ratios.append(2)
+        width_ratios.append(3)
         chart_col_order.append('lith')
     if hasConstructionLogs:
-        width_ratios.append(1)
+        width_ratios.append(2)
         chart_col_order.append('construction')
     if hasPoreWaterChem:
-        width_ratios.append(2)
-        width_ratios.append(2)
+        width_ratios.append(2.5)
+        width_ratios.append(2.5)
         chart_col_order.append('EC')
         chart_col_order.append('pH')
     if hasMagSus:
@@ -1741,7 +1741,7 @@ def drawCompLog(data, output_path=None):
     SWLlabelaxis = int(ncols / 2)
     gs = gridspec.GridSpec(nrows=nrows, ncols=ncols, width_ratios=width_ratios, height_ratios=height_ratios)
 
-    fig = plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=figsize, dpi = 200)
     fig.suptitle(hole_name + ' Composite Log', size=22)
 
     # the code to add the images so they display well when saved to a file!
