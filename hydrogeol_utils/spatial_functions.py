@@ -194,7 +194,9 @@ def interpolate_depth_data(df, parameter_columns, interval_column,
     if isinstance(parameter_columns, ("".__class__, u"".__class__)):
         parameter_columns = [parameter_columns]
 
-    new_df = df.DataFrame(columns = parameter_columns + interval_column)
+    new_columns = parameter_columns.append(interval_column)
+
+    new_df = pd.DataFrame(columns=new_columns)
 
     new_df[interval_column] = new_depths
 
