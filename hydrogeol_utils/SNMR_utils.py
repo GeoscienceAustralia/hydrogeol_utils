@@ -40,6 +40,9 @@ def choose_snmr_site_acquisition(df_acquisitions,
     or smaller pulse length is prioritised
     :return:
     """
+    # We need the pulse sequence to be a list
+    if isinstance(pulse_sequence_criteria, str):
+        pulse_sequence_criteria = list(pulse_sequence_criteria)
 
     # Our acquisition ids are appended to an empty list
     acqu_ids = []
@@ -72,7 +75,7 @@ def choose_snmr_site_acquisition(df_acquisitions,
 
             if pulse_length_criteria == 'min':
                 criterion3 = df_acquisitions[criterion1][criterion2]['pulse_length'].map(
-                    lambda x: x == np.max(pulse_lengths))
+                    lambda x: x == np.min(pulse_lengths))
             elif pulse_length_criteria == 'max':
                 criterion3 = df_acquisitions[criterion1][criterion2]['pulse_length'].map(
                     lambda x: x == np.max(pulse_lengths))
@@ -176,15 +179,13 @@ def plot_profile(ax, df, doi= None, plot_mobile_water = False):
     :param ax: matplotlib axis
     :param df: individual inversion dataframe
     :param doi: depth of investigation
-    :param plot_mobile_water: boolean flag for plotting
+    :param plot_mobile_water: boolean flag for plotting mobile water
     mobile water
     :return:
     matplotlib axis with profile plotted
     """
 
 
-    # invert the y axix so that depth in a positive number
-    #plt.gca().invert_yaxis()
 
     # define plot data using pandas series names
     y = df['Depth_from'].values
@@ -225,7 +226,7 @@ def plot_profile(ax, df, doi= None, plot_mobile_water = False):
 
     if doi is not None:
 
-        ax.hlines(doi, 0, np.max(Total) + 5,
+        ax.hlines(doi, ax.get_xlim()[0], ax.get_xlim()[1],
                   color='green', linestyles='dotted')
         ax.text(np.max(Total) - 5, (doi - 1),
                 'Depth of investigation', fontsize=6)

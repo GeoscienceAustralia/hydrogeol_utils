@@ -46,7 +46,6 @@ import matplotlib.patches as mpatches
 from matplotlib.patches import Polygon as mPolygon
 from matplotlib.collections import PatchCollection, LineCollection
 import matplotlib.image as mpimg
-import matplotlib.text as mtext
 
 from skimage.transform import resize
 
