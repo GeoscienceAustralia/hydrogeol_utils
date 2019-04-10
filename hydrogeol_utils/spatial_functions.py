@@ -258,7 +258,7 @@ def interpolate_depths_to_intervals(df, parameter_columns, new_depths,
 
 
 def resample_raster(infile, outfile, gridx, gridy, driver='GTiff',
-                 null = -999):
+                    null = -999):
     """
     A function for resampling a raster onto a regular grid with the same
     crs
