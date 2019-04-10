@@ -27,6 +27,8 @@ import numpy as np
 from hydrogeol_utils import spatial_functions
 import pandas as pd
 from geophys_utils._transect_utils import coords2distance
+from geophys_utils._netcdf_point_utils import NetCDFPointUtils
+from geophys_utils._netcdf_line_utils import NetCDFLineUtils
 
 
 # A function for getting the most representative conductivity profile given
@@ -221,3 +223,112 @@ def griddify_xyz(data):
     # Add to dictionary
     gridded_data['elevation'] = elevation
     return gridded_data
+
+def get_boundary_elevations(dataset):
+    """
+
+    :param dataset: netcdf AEM line dataset
+    :return:
+    an array of layer top elevations of the same shape as layer_top_depth
+    """
+    return np.repeat(dataset.variables['elevation'][:][:, np.newaxis],
+                     dataset.variables['layer_top_depth'].shape[1],axis=1) - \
+                    dataset.variables['layer_top_depth'][:]
+
+
+# Function for reshaping arrays into xyz valu
+
+def arr2xyz(utm_coords, nlayers, layer_top_elevations):
+    # Tile coordinates
+    utm_tiled = np.repeat(utm_coords, nlayers, axis=0)
+
+    xyz = np.hstack((utm_tiled, layer_top_elevations.flatten().reshape([-1,1])))
+
+    return xyz
+
+
+def get_xyz_array(dataset, variables = None, lines = None, east_to_west = True):
+    """
+    If lines are supplied this is an iterator which yields line xyz value arrays. If none are supplied it yields
+    on the whole dataset
+
+    :param dataset: netcdf dataset
+    :param variables: list of variables to add to xyz array
+    :param lines: list of lines
+    :param east_to_west: boolean flag whether to align lines in east west fashion
+    :return:
+    """
+
+    if lines is not None:
+
+        # Create a generator
+        cond_line_util = NetCDFLineUtils(dataset)
+
+        line_gen = cond_line_util.get_lines(line_numbers=lines)
+
+        for _ in lines:
+
+           # Yield variables for the line
+            line_vars = next(line_gen)[1]
+
+            utm_coords = cond_line_util.utm_coords(line_vars['coordinates'])[1]
+
+            # Now repeat the utm coordinates so it can be joined into an x,y,z array
+
+            nlayers = line_vars['layer_top_depth'].shape[1]
+
+            # Get the elevation of the layer boundaries
+
+            layer_top_elevations = np.repeat(line_vars['elevation'][:, np.newaxis],
+                             nlayers, axis=1) - line_vars['layer_top_depth']
+
+
+            # Turn these arrays into a xyz array
+            layer_boundaries = arr2xyz(utm_coords, nlayers, layer_top_elevations)
+
+            # Now retrieve the additional variable point attribute
+
+            if variables is not None:
+
+                for v in variables:
+                    # Retrieve array from the line variable dictionary
+                    a = line_vars[v].reshape([-1, 1])
+
+                    layer_boundaries = np.hstack((layer_boundaries, a))
+
+            if east_to_west:
+
+                if layer_boundaries[0,0] > layer_boundaries[-1,0]:
+
+                    layer_boundaries = np.flipud(layer_boundaries)
+
+            yield layer_boundaries
+    # Otherwise we apply this on whole dataset
+    else:
+
+        # Create a point generator
+        cond_point_util = NetCDFPointUtils(dataset)
+        # Get all coords
+        utm_coords = cond_point_util.utm_coords(cond_point_util.get_xy_coord_values())[1]
+
+        # Get the layer_top_elevations
+        layer_top_elevations = get_boundary_elevations(dataset)
+
+        nlayers = dataset.variables['layer_top_depth'].shape[1]
+
+        # Turn these arrays into a xyz array
+        layer_boundaries = arr2xyz(utm_coords, nlayers, layer_top_elevations)
+
+        if variables is not None:
+
+            for v in variables:
+                # Retrieve array from the line variable dictionary
+                a = dataset.variables[v][:].reshape([-1, 1])
+
+                layer_boundaries = np.hstack((layer_boundaries, a))
+
+        yield layer_boundaries
+
+
+
+

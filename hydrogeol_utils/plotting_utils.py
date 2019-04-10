@@ -44,7 +44,7 @@ from matplotlib.patches import Rectangle
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
 from matplotlib.patches import Polygon as mPolygon
-from matplotlib.collections import PatchCollection, LineCollection
+from matplotlib.collections import LineCollection
 import matplotlib.image as mpimg
 
 from skimage.transform import resize
@@ -503,7 +503,8 @@ def interpolate_2d_vars(vars_2d, var_dict, xres, yres,
                             point_vars, (grid_y, grid_x),
                             method=resampling_method)
 
-        interpolated_var = purge_invalid_elevations(var_grid, grid_y, min_elevation_grid, max_elevation_grid, yres)
+        interpolated_var = purge_invalid_elevations(var_grid, grid_y, min_elevation_grid,
+                                                    max_elevation_grid, yres)
 
         # Reverse the grid if it is west to east
 
