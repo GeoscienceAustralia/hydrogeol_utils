@@ -259,7 +259,6 @@ class ConductivitySectionPlot:
         else:
             raise ValueError("Check lines variable.")
 
-
         # First create generators for returning coordinates and variables for the lines
 
         if plot_cond:
@@ -599,7 +598,7 @@ def unpack_plot_settings(panel_dict, entry):
 def extract_hdf5_data(f, plot_vars):
     """
 
-    :param f: hdf5 file path
+    :param f: hdf5 file
     :param plot_vars:
     :return:
     dictionary with interpolated datasets
@@ -1492,7 +1491,7 @@ def drawLith(lithology):
             top = lith_row['Depth_from']
             bottom = lith_row['Depth_to']
             # Extract lithology info
-            lith = lith_row['Lithology_name']
+            lith = lith_row['Lithology_type']
             # Apply lithology to lookup
             if lith not in lithsymbols.keys():
                 simp_lith = 'unknown'
@@ -1506,7 +1505,7 @@ def drawLith(lithology):
                                     closed=True, **lithsymbols[simp_lith]))
             # If the lithology isn't in the lookup table, add a label for what the actual lithology is
             if simp_lith == 'unknown':
-                labels.append([0.05, (bottom + top) / 2, lith_row['Lithology_name']])
+                labels.append([0.05, (bottom + top) / 2, lith_row['Lithology_type']])
         # Define the legend for the lithology
         leg_patches = [mpatches.Patch(color=lithsymbols[simp_lith]['facecolor'], hatch=lithsymbols[simp_lith]['hatch'],
                                       label=simp_lith) for simp_lith in drawn_lithtypes]
@@ -1759,7 +1758,8 @@ def drawCompLog(data, output_path=None):
             ax.set_ylim([max_depth, 0])  # sets the range for the logs and inverts the axes
         else:
             ax = fig.add_subplot(gs[1, i], sharey=axs[0])
-            # pinched from https://stackoverflow.com/questions/20416609/remove-the-x-axis-ticks-while-keeping-the-grids-matplotlib
+            # pinched from
+            # #https://stackoverflow.com/questions/20416609/remove-the-x-axis-ticks-while-keeping-the-grids-matplotlib
             # don't really understand what it does
             for tic in ax.yaxis.get_major_ticks():
                 tic.tick1On = tic.tick2On = False
@@ -1798,5 +1798,4 @@ def drawCompLog(data, output_path=None):
         plt.savefig(output_path + '.svg')
         plt.savefig(output_path + '.png')
     else:
-        plt.show()
-    plt.close('all')
+        return fig, axs
