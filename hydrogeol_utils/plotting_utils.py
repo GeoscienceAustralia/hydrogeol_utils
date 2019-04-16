@@ -30,6 +30,7 @@ import os
 import collections
 import gc
 from scipy.interpolate import griddata
+from scipy.interpolate import interp1d
 import numpy as np
 from geophys_utils._netcdf_line_utils import NetCDFLineUtils
 from geophys_utils._transect_utils import coords2distance
@@ -189,8 +190,7 @@ class ConductivitySectionPlot:
 
         # Generator for inteprolating 2D variables from the vars_2d list
         interp2d = interpolate_2d_vars(vars_2d, cond_var_dict, gridding_params['xres'],
-                                       gridding_params['yres'], gridding_params['layer_subdivisions'],
-                                       gridding_params['resampling_method'])
+                                       gridding_params['yres'])
 
         for var in vars_2d:
             # Generator yields the interpolated variable array
@@ -376,7 +376,145 @@ def purge_invalid_elevations(var_grid, grid_y, min_elevation_grid,
     return var_grid
 
 
-def interpolate_2d_vars(vars_2d, var_dict, xres, yres,
+def interpolate_2d_vars(vars_2d, var_dict, xres, yres):
+    """
+    Generator to interpolate 2d variables (i.e conductivity, uncertainty)
+
+    :param vars_2d:
+    :param var_dict:
+    :param xres:
+    :param yres:
+    :return:
+    """
+
+    nlayers = var_dict['nlayers']
+
+    # Get the thickness of the layers
+
+    layer_thicknesses = spatial_functions.depth_to_thickness(var_dict['layer_top_depth'])
+
+    # Give the bottom layer a thickness of 20 metres
+
+    layer_thicknesses[:,-1] = 20.
+
+    # Get the vertical limits, note guard against dummy values > 800m
+
+    elevations = var_dict['elevation']
+
+    # Guard against dummy values which are deeper than 900 metres
+
+    max_depth = np.max(var_dict['layer_top_depth'][var_dict['layer_top_depth'] < 900.])
+
+    vlimits = [np.min(elevations) - max_depth,
+               np.max(elevations) + 5]
+
+    # Get the horizontal limits
+
+    distances = var_dict['distances']
+
+    hlimits = [np.min(distances), np.max(distances)]
+
+    # Get the x and y dimension coordinates
+
+    xres = np.float(xres)
+    yres = np.float(yres)
+
+    grid_y, grid_x = np.mgrid[vlimits[1]:vlimits[0]:-yres,
+                     hlimits[0]:hlimits[1]:xres]
+
+    grid_distances = grid_x[0]
+
+    grid_elevations = grid_y[:, 0]
+
+    # Add to the variable dictionary
+
+    var_dict['grid_elevations'] = grid_elevations
+
+    var_dict['grid_distances'] = grid_distances
+
+    # Interpolate the elevation
+
+    f = interp1d(distances, elevations)
+
+    max_elevation = f(grid_distances)
+
+    # Interpolate the layer thicknesses
+
+    grid_thicknesses = np.nan*np.ones(shape = (grid_distances.shape[0],
+                                               grid_elevations.shape[0]),
+                                      dtype = layer_thicknesses.dtype)
+
+    for j in range(layer_thicknesses.shape[1]):
+        # Guard against nans
+
+        if not np.isnan(layer_thicknesses[:,j]).any():
+            # Grid in log10 space
+            layer_thickness = np.log10(layer_thicknesses[:, j])
+            f = interp1d(distances, layer_thickness)
+            grid_thicknesses[:,j] = f(grid_distances)
+
+    # Tranform back to linear space
+    grid_thicknesses = 10**grid_thicknesses
+
+    # Interpolate the variables
+
+    # Iterate through variables and interpolate onto new grid
+    for var in vars_2d:
+
+        interpolated_var = np.nan*np.ones(grid_thicknesses.shape,
+                                          dtype = var_dict[var].dtype)
+
+        # For conductivity we interpolate in log10 space
+
+        point_var = var_dict[var]
+
+        new_var = np.ones(shape = (len(grid_distances),
+                                   nlayers))
+
+        if var == 'conductivity':
+
+            point_var = np.log10(point_var)
+
+        for j in range(point_var.shape[1]):
+
+            f = interp1d(distances, point_var[:,j])
+            new_var[:, j] = f(grid_distances)
+
+        if var == 'conductivity':
+
+            new_var = 10**(new_var)
+
+        # Now we need to place the 2d variables on the new grid
+        for i in range(grid_distances.shape[0]):
+            dtop = 0.
+            for j in range(nlayers - 1):
+                # Get the thickness
+                thick = grid_thicknesses[i,j]
+                # Find the elevation top and bottom
+                etop = max_elevation[i] - dtop
+                ebot = etop - thick
+                # Get the indices for this elevation range
+                j_ind = np.where((etop >= grid_elevations) & (ebot <= grid_elevations))
+                # Populate the section
+                interpolated_var[i, j_ind] = new_var[i,j]
+                # Update the depth top
+                dtop += thick
+
+        # Reverse the grid if it is west to east
+
+        if var_dict['reverse_line']:
+
+            interpolated_var = np.flipud(interpolated_var)
+
+        # We also want to transpose the grid so the up elevations are up
+
+        interpolated_var = interpolated_var.T
+
+        # Yield the generator and the dictionary with added variables
+        yield interpolated_var, var_dict
+
+
+def interpolate_2d_vars_full_grid(vars_2d, var_dict, xres, yres,
                         layer_subdivisions, resampling_method):
     """
     Generator to interpolate 2d variables (i.e conductivity, uncertainty)

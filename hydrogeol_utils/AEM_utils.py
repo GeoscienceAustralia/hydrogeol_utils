@@ -242,7 +242,7 @@ def arr2xyz(utm_coords, nlayers, layer_top_elevations):
     # Tile coordinates
     utm_tiled = np.repeat(utm_coords, nlayers, axis=0)
 
-    xyz = np.hstack((utm_tiled, layer_top_elevations.flatten().reshape([-1,1])))
+    xyz = np.hstack((utm_tiled, layer_top_elevations.reshape([-1,1])))
 
     return xyz
 
@@ -281,7 +281,6 @@ def get_xyz_array(dataset, variables = None, lines = None, east_to_west = True):
 
             layer_top_elevations = np.repeat(line_vars['elevation'][:, np.newaxis],
                              nlayers, axis=1) - line_vars['layer_top_depth']
-
 
             # Turn these arrays into a xyz array
             layer_boundaries = arr2xyz(utm_coords, nlayers, layer_top_elevations)

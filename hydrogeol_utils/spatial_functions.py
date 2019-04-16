@@ -52,7 +52,7 @@ def inverse_distance_weights(distance, power):
 def depth_to_thickness(depth):
     """
     Function for calculating thickness from depth array
-    :param depth: a flat array of depths
+    :param depth: an array of depths
     :return:
     a flat array of thicknesses with the last entry being a null
     """
@@ -60,9 +60,15 @@ def depth_to_thickness(depth):
     thickness = np.nan*np.ones(shape=depth.shape,
                                dtype=np.float)
     # Iterate through the depth array
-    for i in range(len(depth)-1):
-        thickness[i] = depth[i+1] - depth[i]
-    return thickness
+    if len(depth.shape) == 1:
+        thickness[0:-1] = depth[1:] - depth[:-1]
+        return thickness
+
+    elif len(depth.shape) == 2:
+        thickness[:, 0:-1] = depth[:, 1:] - depth[:, :-1]
+        return thickness
+
+
 
 
 def interpolate_layered_model(df, parameter_columns, interval_columns, new_intervals):
