@@ -152,7 +152,7 @@ class ConductivitySectionPlot:
         return interpolated, var_dict
 
 
-    def grid_conductivity_variables(self, line, cond_var_dict, gridding_params):
+    def grid_conductivity_variables(self, line, cond_var_dict, gridding_params, smoothed = False):
 
         """
 
@@ -189,8 +189,13 @@ class ConductivitySectionPlot:
         vars_1d = [v for v in self.conductivity_variables if cond_var_dict[v].ndim == 1]
 
         # Generator for inteprolating 2D variables from the vars_2d list
-        interp2d = interpolate_2d_vars(vars_2d, cond_var_dict, gridding_params['xres'],
+        if not smoothed:
+            interp2d = interpolate_2d_vars_true(vars_2d, cond_var_dict, gridding_params['xres'],
                                        gridding_params['yres'])
+        else:
+            interp2d = interpolate_2d_vars_smooth(vars_2d, cond_var_dict, gridding_params['xres'],
+                                           gridding_params['yres'], gridding_params['layer_subdivisions'],
+                                           gridding_params['resampling_method'])
 
         for var in vars_2d:
             # Generator yields the interpolated variable array
@@ -213,7 +218,7 @@ class ConductivitySectionPlot:
 
     def grid_variables(self, xres, yres, lines,
                        layer_subdivisions = None, resampling_method = 'linear',
-                       save_hdf5 = False, hdf5_dir = None,
+                       smoothed = False, save_hdf5 = False, hdf5_dir = None,
                        overwrite_hdf5 = True, return_dict = True):
         """
         A function for interpolating 1D and 2d variables onto a vertical grid
@@ -287,7 +292,7 @@ class ConductivitySectionPlot:
                 cond_var_dict['utm_coordinates'] = self.condLineUtils.utm_coords(cond_var_dict['coordinates'])[1]
 
                 interpolated[line_no] =  self.grid_conductivity_variables(line_no, cond_var_dict,
-                                                                          gridding_params)
+                                                                          gridding_params, smoothed=smoothed)
 
             if plot_dat:
                 # Extract variables from the data
@@ -376,7 +381,7 @@ def purge_invalid_elevations(var_grid, grid_y, min_elevation_grid,
     return var_grid
 
 
-def interpolate_2d_vars(vars_2d, var_dict, xres, yres):
+def interpolate_2d_vars_true(vars_2d, var_dict, xres, yres):
     """
     Generator to interpolate 2d variables (i.e conductivity, uncertainty)
 
@@ -514,10 +519,11 @@ def interpolate_2d_vars(vars_2d, var_dict, xres, yres):
         yield interpolated_var, var_dict
 
 
-def interpolate_2d_vars_full_grid(vars_2d, var_dict, xres, yres,
+def interpolate_2d_vars_smooth(vars_2d, var_dict, xres, yres,
                         layer_subdivisions, resampling_method):
     """
-    Generator to interpolate 2d variables (i.e conductivity, uncertainty)
+    Generator to interpolate 2d variables (i.e conductivity, uncertainty). This function is not currently used but
+    produces a smoother model than
 
     :param vars_2d:
     :param var_dict:
@@ -1023,17 +1029,13 @@ def plot_conductivity_section(ax_array, gridded_variables, plot_settings, panel_
     :return:
     """
 
-    # Find the hlen and vlen
-    hlen =  gridded_variables['grid_distances'][-1]
-    vlen =  gridded_variables['grid_elevations'][0] -  gridded_variables['grid_elevations'][-1]
-
-
     # Unpack the panel settings
 
     variables = unpack_plot_settings(panel_settings,
                                           'variable')
     panel_kwargs = unpack_plot_settings(panel_settings,
                                              'panel_kwargs')
+
     plot_type = unpack_plot_settings(panel_settings,
                                           'plot_type')
 
