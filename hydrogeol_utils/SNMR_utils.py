@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 
 
 def choose_snmr_site_acquisition(df_acquisitions,
-                                 pulse_sequence_criteria,
+                                 pulse_sequence_criteria = ['FID'],
                                  pulse_length_criteria="max"):
     """
 
@@ -40,10 +40,16 @@ def choose_snmr_site_acquisition(df_acquisitions,
     or smaller pulse length is prioritised
     :return:
     """
+<<<<<<< HEAD
     # We need the pulse sequence to be a list
     if isinstance(pulse_sequence_criteria, str):
         pulse_sequence_criteria = list(pulse_sequence_criteria)
 
+=======
+    # If the parameter input is an integer and not a list make it a list
+    if isinstance(pulse_sequence_criteria, (str)):
+        pulse_sequence_criteria = [pulse_sequence_criteria]
+>>>>>>> master
     # Our acquisition ids are appended to an empty list
     acqu_ids = []
 
@@ -58,7 +64,7 @@ def choose_snmr_site_acquisition(df_acquisitions,
 
             acqu_ids.append(int(df_acquisitions[df_acquisitions.site_id == item].index.values))
 
-            # If there are more than one acuqisitions at the site we revert to other criterios
+            # If there are more than one acuqisitions at the site we revert to other criterias
         elif len(df_acquisitions[criterion1]) > 1:
 
             # Apply the pulse sequence criteria
@@ -170,7 +176,8 @@ def extract_snmr_inversions(acquisition_ids, connection, mask_below_doi=True):
 
         return df_inversions.iloc[condition]
 
-def plot_profile(ax, df, doi= None, plot_mobile_water = False):
+def plot_profile(ax, df, doi= None, plot_mobile_water = False,
+                 water_table_depth = None):
     """
     Function for plotting SNMR profiles similarly to the GMR inversion
     software. This function allows customised plots and importantly
@@ -181,11 +188,17 @@ def plot_profile(ax, df, doi= None, plot_mobile_water = False):
     :param doi: depth of investigation
     :param plot_mobile_water: boolean flag for plotting mobile water
     mobile water
+    :param water_table_depth float of water table depth to be plotted
     :return:
     matplotlib axis with profile plotted
     """
 
 
+<<<<<<< HEAD
+=======
+    # invert the y axix so that depth in a positive number
+    plt.gca().invert_yaxis()
+>>>>>>> master
 
     # define plot data using pandas series names
     y = df['Depth_from'].values
@@ -230,5 +243,12 @@ def plot_profile(ax, df, doi= None, plot_mobile_water = False):
                   color='green', linestyles='dotted')
         ax.text(np.max(Total) - 5, (doi - 1),
                 'Depth of investigation', fontsize=6)
+    if water_table_depth is not None:
+
+        ax.hlines(water_table_depth, 0, np.max(Total) + 5,
+                  color='k', linestyles='dashed')
+        ax.text(np.max(Total) - 0.1*np.max(Total),
+                (water_table_depth - 1),
+                'water table', fontsize=6)
 
     return ax
