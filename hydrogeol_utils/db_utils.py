@@ -1,6 +1,7 @@
 import os
 import shutil
 import sqlite3
+import pandas as pd
 
 spatiallite_path = r'C:\Users\U19955\Desktop\mod_spatialite-4.3.0a-win-amd64'
 os.environ['PATH'] = spatiallite_path + ';' + os.environ['PATH']
@@ -57,7 +58,7 @@ def closeCon(con, db_path):
     print('Connection to {} is closed. Temporary working copy removed.'.format(db_path))
     return
     
-def listTables(con, all = True):
+def listTables(con, all = False):
     '''
     Simple wrapper to list all the tables in a given database.
     This has been setup to ignore the background tables in Spatialite.
@@ -90,7 +91,7 @@ def listTables(con, all = True):
                      'SpatialIndex',
                      'ElementaryGeometries']
     if not all:
-        tables = [table for table in tables if table not in exlude_list]
+        tables = [table for table in tables if table not in exclude_list]
     return tables
 
 def listColumns(table_name, con):
@@ -103,8 +104,11 @@ def listColumns(table_name, con):
     :return:
     A list of all the columns in the requested table
     '''
-    cols = [row[1] for row in con.cursor().execute("pragma table_info('{}')".format(table_name).fetchall()]
-    return cols
+    if table_name not in listTables(con):
+        raise NameError('"{}" not a valid table name for specified connection'.format(table_name))
+    else:
+        cols = [row[1] for row in con.cursor().execute("pragma table_info('{}')".format(table_name)).fetchall()]
+        return cols
     
 def describeTable(table_name, con):
     '''
@@ -116,7 +120,10 @@ def describeTable(table_name, con):
     :return:
     A pandas DataFrame containing the details about each column
     '''
-    desc = pd.DataFrame(con.cursor().execute("pragma table_info('{}')".format(table_name).fetchall()))
-    desc.columns = ['column_num', 'column_name', 'is_nullable','default_value','is_primary_key']
-    desc = desc.set_index('column_num', drop = True)
-    return desc
+    if table_name not in listTables(con):
+        raise NameError('"{}" not a valid table name for specified connection'.format(table_name))
+    else:
+        desc = pd.DataFrame(con.cursor().execute("pragma table_info('{}')".format(table_name)).fetchall())
+        desc.columns = ['column_num', 'column_name', 'data_type', 'is_nullable','default_value','is_primary_key']
+        desc = desc.set_index('column_num', drop = True)
+        return desc
