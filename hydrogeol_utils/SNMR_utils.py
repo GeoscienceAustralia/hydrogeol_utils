@@ -25,7 +25,6 @@ These are functions used to process SNMR data from  spatialite database
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 def choose_snmr_site_acquisition(df_acquisitions,
@@ -40,16 +39,11 @@ def choose_snmr_site_acquisition(df_acquisitions,
     or smaller pulse length is prioritised
     :return:
     """
-<<<<<<< HEAD
+
     # We need the pulse sequence to be a list
     if isinstance(pulse_sequence_criteria, str):
         pulse_sequence_criteria = list(pulse_sequence_criteria)
 
-=======
-    # If the parameter input is an integer and not a list make it a list
-    if isinstance(pulse_sequence_criteria, (str)):
-        pulse_sequence_criteria = [pulse_sequence_criteria]
->>>>>>> master
     # Our acquisition ids are appended to an empty list
     acqu_ids = []
 
@@ -96,7 +90,7 @@ def choose_snmr_site_acquisition(df_acquisitions,
     # Return the indices
     return acqu_ids
 
-# This function extracts the K profile using the SDR equation
+
 
 def sdr_k_profile(df, N=1, C=4000):
     """
@@ -192,13 +186,6 @@ def plot_profile(ax, df, doi= None, plot_mobile_water = False,
     :return:
     matplotlib axis with profile plotted
     """
-
-
-<<<<<<< HEAD
-=======
-    # invert the y axix so that depth in a positive number
-    plt.gca().invert_yaxis()
->>>>>>> master
 
     # define plot data using pandas series names
     y = df['Depth_from'].values
