@@ -325,3 +325,37 @@ def resample_raster(infile, outfile, gridx, gridy, driver='GTiff',
     new_dataset.write(newarr, 1)
 
     new_dataset.close()
+
+
+def resample_categorical_intervals(df, parameter_columns,
+                                   interval_columns, new_intervals):
+    # If the parameter input is a string and not a list make it a list
+    if isinstance(parameter_columns, ("".__class__, u"".__class__)):
+        parameter_columns = [parameter_columns]
+
+    # Create a dataframe to add to
+    df_resampled = pd.DataFrame(columns=interval_columns, data=new_intervals)
+
+    for p in parameter_columns:
+
+        df_resampled[p] = ''
+
+        # Iterate through the new intervals
+        for i, interval in enumerate(new_intervals):
+
+            new_depth_from = interval[0]
+            new_depth_to = interval[1]
+
+            mask = (df[interval_columns[0]] < new_depth_to) & (df[interval_columns[1]] > new_depth_from)
+
+            v = df[mask][p].mode()
+
+            if len(v) == 1:
+
+                df_resampled.at[i, p] = v.values[0]
+
+            elif len(v) > 1:
+
+                df_resampled.at[i, p] = 'transition'
+
+    return df_resampled
