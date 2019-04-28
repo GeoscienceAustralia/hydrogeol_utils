@@ -31,6 +31,7 @@ import rasterio
 from rasterio import Affine
 from rasterio.warp import reproject, Resampling
 
+
 def inverse_distance_weights(distance, power):
     """
     A function for an calculating array of weights from an array of distances
@@ -52,7 +53,7 @@ def inverse_distance_weights(distance, power):
 def depth_to_thickness(depth):
     """
     Function for calculating thickness from depth array
-    :param depth: a flat array of depths
+    :param depth: an array of depths
     :return:
     a flat array of thicknesses with the last entry being a null
     """
@@ -60,9 +61,15 @@ def depth_to_thickness(depth):
     thickness = np.nan*np.ones(shape=depth.shape,
                                dtype=np.float)
     # Iterate through the depth array
-    for i in range(len(depth)-1):
-        thickness[i] = depth[i+1] - depth[i]
-    return thickness
+    if len(depth.shape) == 1:
+        thickness[0:-1] = depth[1:] - depth[:-1]
+        return thickness
+
+    elif len(depth.shape) == 2:
+        thickness[:, 0:-1] = depth[:, 1:] - depth[:, :-1]
+        return thickness
+
+
 
 
 def interpolate_layered_model(df, parameter_columns, interval_columns, new_intervals):
@@ -174,6 +181,11 @@ def nearest_neighbours(points, coords, points_required = 1, max_distance = 250.)
     # iterate throught the points and find the nearest neighbour
     distances, indices = kdtree.query(points, k=points_required,
                                       distance_upper_bound=max_distance)
+    # Mask out infitnite distances in indices to avoid confusion
+    mask = ~np.isfinite(distances)
+
+    distances[mask] = np.nan
+
     return distances, indices
 
 
@@ -313,3 +325,37 @@ def resample_raster(infile, outfile, gridx, gridy, driver='GTiff',
     new_dataset.write(newarr, 1)
 
     new_dataset.close()
+
+
+def resample_categorical_intervals(df, parameter_columns,
+                                   interval_columns, new_intervals):
+    # If the parameter input is a string and not a list make it a list
+    if isinstance(parameter_columns, ("".__class__, u"".__class__)):
+        parameter_columns = [parameter_columns]
+
+    # Create a dataframe to add to
+    df_resampled = pd.DataFrame(columns=interval_columns, data=new_intervals)
+
+    for p in parameter_columns:
+
+        df_resampled[p] = ''
+
+        # Iterate through the new intervals
+        for i, interval in enumerate(new_intervals):
+
+            new_depth_from = interval[0]
+            new_depth_to = interval[1]
+
+            mask = (df[interval_columns[0]] < new_depth_to) & (df[interval_columns[1]] > new_depth_from)
+
+            v = df[mask][p].mode()
+
+            if len(v) == 1:
+
+                df_resampled.at[i, p] = v.values[0]
+
+            elif len(v) > 1:
+
+                df_resampled.at[i, p] = 'transition'
+
+    return df_resampled

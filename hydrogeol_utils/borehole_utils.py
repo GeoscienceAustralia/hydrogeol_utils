@@ -74,8 +74,12 @@ def extract_sql_with_primary_key(table_name, columns, connection, primary_keys,
 
     # Create query
     query = "select t."
-    cols = ", t.".join(columns)
-    query += cols
+
+    if columns == 'all':
+        query+='*'
+    else:
+        cols = ", t.".join(columns)
+        query += cols
     query += " from "
     query += table_name
     query += " t where t."
@@ -133,6 +137,7 @@ def extract_boreholes_within_geometry(table_name, connection, geometry, columns 
     df.drop(columns = ['geom'], inplace=True)
 
     df['geometry'] = [wkt.loads(x) for x in df['geometry']]
+
 
     return df
 
