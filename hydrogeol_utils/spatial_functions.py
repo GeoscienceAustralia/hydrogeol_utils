@@ -359,3 +359,19 @@ def resample_categorical_intervals(df, parameter_columns,
                 df_resampled.at[i, p] = 'transition'
 
     return df_resampled
+
+
+def point_within_bounds(x,y, bounds):
+    """
+    Function for checking if a point is within a bounds
+     from a raster
+    :param x: x-coordiante
+    :param y: y-coordinate
+    :param bounds: raster bounds
+    :return:
+    boolean
+    """
+    if (bounds.left < x) & (bounds.right > x):
+        if (bounds.bottom < y) & (bounds.top > y):
+            return True
+    return False

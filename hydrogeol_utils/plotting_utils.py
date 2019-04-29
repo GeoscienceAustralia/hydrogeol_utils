@@ -771,7 +771,7 @@ def extract_hdf5_data(f, plot_vars):
 
     return datasets
 
-def plot_grid(ax, gridded_variables, variable, panel_kwargs):
+def plot_grid(ax, gridded_variables, variable, panel_kwargs, x_ax_var = 'grid_distances'):
     """
 
     :param gridded_variables:
@@ -792,7 +792,7 @@ def plot_grid(ax, gridded_variables, variable, panel_kwargs):
 
     max_extent = gridded_variables['grid_elevations'][0] + 10
 
-    extent = (gridded_variables['grid_distances'][0], gridded_variables['grid_distances'][-1],
+    extent = (gridded_variables[x_ax_var][0], gridded_variables[x_ax_var][-1],
               gridded_variables['grid_elevations'][-1], max_extent)
 
     ax.set_ylim(min_elevation, gridded_variables['grid_elevations'][0] + 40)
@@ -838,7 +838,7 @@ def plot_grid(ax, gridded_variables, variable, panel_kwargs):
                    cmap=cmap)
 
     # Plot the elevation as a line over the section
-    line_x = np.linspace(gridded_variables['grid_distances'][0], gridded_variables['grid_distances'][-1],
+    line_x = np.linspace(gridded_variables[x_ax_var][0], gridded_variables[x_ax_var][-1],
                          np.shape(gridded_variables[variable])[1])
 
     ax.plot(line_x,  gridded_variables['elevation'], 'k')
