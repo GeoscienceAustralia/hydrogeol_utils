@@ -108,14 +108,14 @@ def interpolate_layered_model(df, parameter_columns, interval_columns, new_inter
     xnew = new_intervals[new_intervals.columns[0]].values
     xnew = xnew[(xnew > np.min(intervals)) & (xnew < np.max(intervals))]
     # Concatenate, we will sort at a later time
-    intervals = np.concatenate((intervals, xnew))
+    intervals = np.sort(np.concatenate((intervals, xnew)))
 
     # For each parameter interpolate and add the new values to the array
     for p in params.keys():
         y = params[p]
         f = interpolate.interp1d(x, y, kind='linear')
         # Find new parameters values
-        ynew = f(xnew)
+        ynew = f(intervals)
         # Add to the parameter array, we will sort later
         params[p] = np.concatenate((params[p], ynew))
 
