@@ -1117,7 +1117,7 @@ def add_1d_layered_model(ax, df, gridded_variables, plot_variable, xy_columns, c
     d, i = spatial_functions.nearest_neighbours(df[xy_columns].values,
                                                utm_coords,
                                                points_required=1,
-                                               max_distance=200.)
+                                               max_distance=max_distance)
 
     # Add the minimum distance to the dataframe and remove nulls (i.e. those
     # that have a distance greater than the maximum allowable as denoted by a value
