@@ -70,8 +70,6 @@ def depth_to_thickness(depth):
         return thickness
 
 
-
-
 def interpolate_layered_model(df, parameter_columns, interval_columns, new_intervals):
     """
     A function that does interpolates model parameters
@@ -97,6 +95,8 @@ def interpolate_layered_model(df, parameter_columns, interval_columns, new_inter
     if isinstance(parameter_columns, ("".__class__, u"".__class__)):
         parameter_columns = [parameter_columns]
 
+    # For each parameter, repeat each value to account for the depth from and depth
+    # top
     for p in parameter_columns:
         # Create an array and add it to the dictionary
         params[p] = np.repeat(df[p].values, 2)
@@ -105,19 +105,28 @@ def interpolate_layered_model(df, parameter_columns, interval_columns, new_inter
     # To get the parameters we will do some basic interpolation using scipy
 
     x = intervals
+
+    # Get just the first column of the new intervals
     xnew = new_intervals[new_intervals.columns[0]].values
+
+    # Remove and values from the new intervals that are outsitde the
+    # Range of the original
     xnew = xnew[(xnew > np.min(intervals)) & (xnew < np.max(intervals))]
-    # Concatenate, we will sort at a later time
+
+    # These intervals will have all the old ones and the new ones together
+
     intervals = np.sort(np.concatenate((intervals, xnew)))
 
     # For each parameter interpolate and add the new values to the array
     for p in params.keys():
         y = params[p]
         f = interpolate.interp1d(x, y, kind='linear')
+
         # Find new parameters values
         ynew = f(intervals)
+
         # Add to the parameter array, we will sort later
-        params[p] = np.concatenate((params[p], ynew))
+        params[p] = ynew
 
     # Add the new intervals array to the params dictionary
     params['Depth'] = intervals
@@ -126,7 +135,7 @@ def interpolate_layered_model(df, parameter_columns, interval_columns, new_inter
     df_interp = pd.DataFrame(data=params)
 
     # Sort and reset the index
-    df_interp.sort_values(by='Depth', inplace=True)
+    # df_interp.sort_values(by='Depth', inplace=True)
     df_interp.reset_index(inplace=True, drop=True)
 
     # Cretae a thickness column
@@ -134,8 +143,6 @@ def interpolate_layered_model(df, parameter_columns, interval_columns, new_inter
 
     # Now we round to 2 decimal places to avoid floating point errors
     df_interp = df_interp.round({'Depth': 2})
-    for c in new_intervals.columns:
-        new_intervals = new_intervals.round({c: 2})
 
     # Create new columns for the interpolated parameter values
     for p in parameter_columns:
@@ -145,24 +152,32 @@ def interpolate_layered_model(df, parameter_columns, interval_columns, new_inter
     for index, row in new_intervals.iterrows():
         # Find the upper and lower depths
         du, dl = row[new_intervals.columns[0]], row[new_intervals.columns[1]]
+
+        # ROund du and dl
+        du, dl = np.round(du,2), np.round(dl, 2)
+
         # Slice the data frame
-        df_subset = df_interp[(df_interp['Depth'] >= du) & (df_interp['Depth'] <= dl)]
+
+        df_subset = df_interp[(df_interp['Depth'] >= du) & (df_interp['Depth'] < dl)]
+
 
         # Remove zero thickness layers which were only used for interpolation
         df_subset = df_subset[df_subset['thickness'] != 0]
 
         # Calculate weights based on normalised thickness
-        df_subset['weights'] = 0
+        df_subset['weights'] = 0.
 
-        weights = 1.0 / df_subset['thickness']
+        weights = df_subset['thickness']
 
         weights /= weights.sum()
+
         df_subset.at[weights.index, 'weights'] = weights
+
 
         # Iterate through the parameters and multiply by the corresponding weights
         for p in parameter_columns:
             new_intervals.at[index, p] = (df_subset['weights'] *
-                                                            df_subset[p]).sum()
+                                          df_subset[p]).sum()
 
     return new_intervals
 
