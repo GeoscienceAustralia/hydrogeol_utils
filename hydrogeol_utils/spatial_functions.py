@@ -261,11 +261,13 @@ def interpolate_depths_to_intervals(df, parameter_columns, new_depths,
     if isinstance(parameter_columns, ("".__class__, u"".__class__)):
         parameter_columns = [parameter_columns]
 
-    new_df = pd.DataFrame(columns=parameter_columns)
-
-    new_df[['Depth_from', "Depth_to"]] = new_depths
+    # Create a dataframe
+    new_df = pd.DataFrame(columns = ['Depth_from', "Depth_to"],
+                          data= new_depths)
 
     for item in parameter_columns:
+
+        new_df[item] = np.nan
 
         for i, (index, row) in enumerate(new_df.iterrows()):
             # Get the depth top and bottow
