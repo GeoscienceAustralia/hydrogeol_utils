@@ -115,7 +115,8 @@ def extract_conductivity_profile(dataset, distances, indices,
         return cond_profile
 
 
-def parse_gridded_conductivity_file(infile, header, null=1e-08):
+def parse_gridded_conductivity_file(infile, header, null=1e-08,
+                                    lex_sort = True, sort_inds = [3,0]):
     """
     Function for parsing the asci xyz files
 
@@ -134,12 +135,22 @@ def parse_gridded_conductivity_file(infile, header, null=1e-08):
 
     # Save the data in a dictionary
     data = {}
+
+    # Load the gridded data
+    a = np.loadtxt(infile)
+
+    # Replace null values with np.nan
+    a[a == null] = np.nan
+
+    # Lex sort the array on elevation then on easting
+    # This is requried for the gridding function to work
+    if lex_sort:
+        a = a[np.lexsort((a[:, sort_inds[1]],
+                          a[:, sort_inds[0]]))]
     for i, item in enumerate(header):
-        # Load the gridded column into the dictionary
-        data[item] = np.loadtxt(infile, usecols=i)
-        # Replace null values with np.nan
-        mask = data[item] == null
-        data[item][mask] = np.nan
+
+        data[item] = a[:,i]
+
     return data
 
 
