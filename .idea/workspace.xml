@@ -1,15 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="616524b5-6aea-4abc-9b0d-3e026e76957d" name="Default" comment="Fixed up some functions and added functionality">
-      <change afterPath="$PROJECT_DIR$/hydrogeol_utils/misc_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hydrogeol_utils/AEM_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/hydrogeol_utils/AEM_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/EastKimberley_water_table_mapping.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/EastKimberley_water_table_mapping.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/induction_gamma_to_las.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/induction_gamma_to_las.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/plotting_CGI_vs_NBC.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/plotting_CGI_vs_NBC.ipynb" afterDir="false" />
-    </list>
+    <list default="true" id="616524b5-6aea-4abc-9b0d-3e026e76957d" name="Default" comment="Fixed up some functions and added functionality" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -43,8 +35,8 @@
       <file leaf-file-name="plotting_utils.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="51">
-              <caret line="896" selection-start-line="896" selection-end-line="963" selection-end-column="12" />
+            <state relative-caret-position="2329">
+              <caret line="925" column="9" lean-forward="true" selection-start-line="925" selection-start-column="9" selection-end-line="925" selection-end-column="9" />
               <folding>
                 <element signature="e#914#928#0" expanded="true" />
               </folding>
@@ -731,8 +723,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/hydrogeol_utils/plotting_utils.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="51">
-          <caret line="896" selection-start-line="896" selection-end-line="963" selection-end-column="12" />
+        <state relative-caret-position="2329">
+          <caret line="925" column="9" lean-forward="true" selection-start-line="925" selection-start-column="9" selection-end-line="925" selection-end-column="9" />
           <folding>
             <element signature="e#914#928#0" expanded="true" />
           </folding>
