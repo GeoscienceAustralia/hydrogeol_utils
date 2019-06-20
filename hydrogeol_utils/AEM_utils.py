@@ -24,8 +24,9 @@ These are functions used to process AEM data from netcdf objects or miscellaneou
 '''
 
 import numpy as np
-from hydrogeol_utils import spatial_functions
+from hydrogeol_utils import spatial_functions, misc_utils
 import pandas as pd
+import re
 from geophys_utils._transect_utils import coords2distance
 from geophys_utils._netcdf_point_utils import NetCDFPointUtils
 from geophys_utils._netcdf_line_utils import NetCDFLineUtils
@@ -385,14 +386,110 @@ def parse_wb_file(fname):
     inversion['header'] = L[-2][1:].strip().split()
     return inversion
 
-def workbench_to_aseggdf(infile, yaml_file, columns):
-    """
+# Functions for parsing the stm files used for ga_aem stmfiles
+# See https://github.com/GeoscienceAustralia/ga-aem/tree/master/examples/bhmar-skytem/stmfiles for examples
 
-    :param infile: workbench output file
-    :param yaml_file: yaml file mapping workbench headers to output headers
-    :param columns: columns to include
-    :return:
-    """
+# Class for extracting regular expressions from the stm files
+class _RegExLib:
+    """Set up regular expressions"""
+    # use https://regexper.com to visualise these if required
+    _reg_begin = re.compile(r'(.*) Begin\n')
+    _reg_end = re.compile(r'(.*) End\n')
+    _reg_param = re.compile(r'(.*) = (.*)\n')
+
+    __slots__ = ['begin', 'end', 'param']
+
+    def __init__(self, line):
+        # check whether line has a positive match with all of the regular expressions
+        self.begin = self._reg_begin.match(line)
+        self.end = self._reg_end.match(line)
+        self.param = self._reg_param.match(line)
+
+
+
+# Define the blocks from the stm files
+
+blocks = {'Transmitter': ['NumberOfTurns', 'PeakCurrent', 'LoopArea',
+                          'BaseFrequency', 'WaveformDigitisingFrequency',
+                          'WaveFormCurrent'],
+          'Receiver': ['NumberOfWindows', 'WindowWeightingScheme',
+                       'WindowTimes', 'CutOffFrequency', 'Order'],
+
+          'ForwardModelling': ['ModellingLoopRadius', 'OutputType',
+                               'SaveDiagnosticFiles', 'XOutputScaling',
+                               'YOutputScaling', 'ZOutputScaling',
+                               'SecondaryFieldNormalisation',
+                               'FrequenciesPerDecade',
+                               'NumberOfAbsiccaInHankelTransformEvaluation']}
+# Class for AEM systems
+
+class AEM_System:
+
+    def __init__(self, name, dual_moment=True):
+        """
+
+        :param name: string: system name
+        :param dual_moment: boolean, is the system fual moment (i.e. syktem
+        """
+
+        self.name = name
+
+        if dual_moment:
+            self.LM = {'Transmitter': {}, 'Receiver': {}, 'ForwardModelling': {}}
+            self.HM = {'Transmitter': {}, 'Receiver': {}, 'ForwardModelling': {}}
+
+    def parse_stm_file(self, infile, moment):
+
+        # Save the results into a dictionary
+
+        parameters = {}
+        # Extract file line by line
+        with open(infile, 'r') as f:
+            # Yield the lines from the file
+            line = next(f)
+            while line:
+                reg_match = _RegExLib(line)
+
+                if reg_match.begin:
+                    key = reg_match.begin.group(1).strip()
+
+                    if key == "WaveFormCurrent":
+                        a = misc_utils.block_to_array(f)
+                        parameters[key] = a
+
+                    if key == "WindowTimes":
+                        a = misc_utils.block_to_array(f)
+                        parameters[key] = a
+
+                if reg_match.param:
+                    key = reg_match.param.group(1).strip()
+                    val = reg_match.param.group(2).strip()
+
+                    if misc_utils.RepresentsInt(val):
+                        val = int(val)
+
+                    elif misc_utils.RepresentsFloat(val):
+                        val = float(val)
+
+                    elif key == "CutOffFrequency":
+
+                        val = np.array([int(x) for x in val.split()])
+
+                    if not key.startswith(r'//'):
+                        parameters[key] = val
+
+                line = next(f, None)
+
+        for item in blocks.keys():
+            for entry in blocks[item]:
+                if moment == "HM":
+                    self.HM[item][entry] = parameters[entry]
+                elif moment == "LM":
+                    self.LM[item][entry] = parameters[entry]
+
+
+
+
 
 
 

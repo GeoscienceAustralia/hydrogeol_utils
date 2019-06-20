@@ -27,6 +27,7 @@ import numpy as np
 import pandas as pd
 from scipy import interpolate
 from scipy.spatial.ckdtree import cKDTree
+from geophys_utils._transect_utils import coords2distance
 import rasterio
 from rasterio import Affine
 from rasterio.warp import reproject, Resampling
@@ -392,3 +393,17 @@ def point_within_bounds(x,y, bounds):
         if (bounds.bottom < y) & (bounds.top > y):
             return True
     return False
+
+def interpolate_coordinates(utm_coordinates, new_utm, kind = 'nearest'):
+    """
+
+    :param utm_coordinates:
+    :param new_utm:
+    :param kind:
+    :return:
+    """
+
+    distances = coords2distance(utm_coordinates)
+
+    return interpolate.griddata(utm_coordinates, distances, new_utm,
+                                      method=kind)
