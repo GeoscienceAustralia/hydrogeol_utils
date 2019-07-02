@@ -29,8 +29,15 @@ from scipy import interpolate
 from scipy.spatial.ckdtree import cKDTree
 from geophys_utils._transect_utils import coords2distance
 import rasterio
+import math
+import os
+import gc
+import tempfile
+from osgeo import gdal
 from rasterio import Affine
 from rasterio.warp import reproject, Resampling
+from hydrogeol_utils import misc_utils
+from geophys_utils._crs_utils import transform_coords
 
 
 def inverse_distance_weights(distance, power):
@@ -407,3 +414,226 @@ def interpolate_coordinates(utm_coordinates, new_utm, kind = 'nearest'):
 
     return interpolate.griddata(utm_coordinates, distances, new_utm,
                                       method=kind)
+
+
+def grid_var(var_array, coordinates, grid_kwargs):
+    """
+    A function for gridding a variable array in gdal
+    :param var_array: a column array of the variable to grid
+    :param coordinates: utm coordinate array
+    :param grid_kwargs: keyword argument dictionary for gridding using  gdal_grid
+    :return:
+    :param gridded: A gridded array with shape (height, width)
+    :param geotransform: the gdal geotransform for the gridded array
+
+    """
+    if len(var_array.shape) == 1:
+        var_array = var_array.reshape([-1,1])
+
+    if grid_kwargs['log_grid']:
+        var_array = np.log10(var_array)
+
+    temp_a = np.concatenate((coordinates, var_array),
+                            axis=1)
+
+    # Output the points into a temporary csv
+
+    os.chdir(tempfile.gettempdir())
+
+    temp_file = 'pts2grid_temp.csv'
+
+    with open(temp_file, 'w') as f:
+        f.write('x,y,z\n')
+        # Write the array
+        np.savetxt(f, temp_a, delimiter=',')
+    # Write vrt
+    vrt_file = misc_utils.write_vrt_from_csv(temp_file,
+                                             'x', 'y', 'z')
+
+    # Now grid using gdal_grid
+
+    gridopt = gdal.GridOptions(format=grid_kwargs['format'],
+                               outputType=gdal.GDT_Float32,
+                               algorithm=grid_kwargs['gdal_algorithm'],
+                               width=grid_kwargs['width'],
+                               height=grid_kwargs['height'],
+                               outputSRS=grid_kwargs['outputSRS'],  # "EPSG:28352"
+                               outputBounds=grid_kwargs['outputBounds'],
+                               zfield='z',
+                               layers=vrt_file.split('\\')[-1].split('.')[0])
+
+    outfile = 'temp_grid.tif'
+
+    out_ds = gdal.Grid(destName=outfile,
+                       srcDS=vrt_file, options=gridopt)
+
+    geotransform = out_ds.GetGeoTransform()
+
+    gridded = out_ds.ReadAsArray()
+
+    # Currently the nulls are very annoyingly retunr zeros
+
+    null = np.float(grid_kwargs['gdal_algorithm'].split('nodata=')[-1])
+
+    gridded[gridded == null] = np.nan
+
+    if grid_kwargs['log_grid']:
+        gridded = 10 ** gridded
+
+    # Remove trash
+    temp_a = None
+    out_ds = None
+
+    gc.collect()
+
+    # Delete the temporary files
+    for file in [temp_file, vrt_file, outfile]:
+        try:
+            os.remove(file)
+        except PermissionError:
+            print('Permission error. Unable to delete ', file)
+
+    return gridded, geotransform
+
+
+def grid_points_gdal(cond_point_utils_inst, grid_resolution,
+                     variables=None,
+                     native_grid_bounds=None,
+                     reprojected_grid_bounds=None,
+                     grid_wkt=None,
+                     point_step=1,
+                     grid_kwargs=None):
+    '''
+    Function that grids points in the cond_point_utils instance within a bounding box using gdal_grid.
+    @parameter cond_point_utils_inst: instance of cond_point_utils from geophys_utils
+    @parameter grid_resolution: cell size of regular grid in grid CRS units
+    @parameter variables: Single variable name string or list of multiple variable name strings. Defaults to all point variables
+    @parameter native_grid_bounds: Spatial bounding box of area to grid in native coordinates
+    @parameter reprojected_grid_bounds: Spatial bounding box of area to grid in grid coordinates
+    @parameter grid_wkt: WKT for grid coordinate reference system. Defaults to native CRS
+    @parameter point_step: Sampling spacing for points. 1 (default) means every point, 2 means every second point, etc.
+
+    @return grid: dictionary with gridded data, geotransform and wkt
+    '''
+    assert not (
+                native_grid_bounds and reprojected_grid_bounds), 'Either native_grid_bounds or reprojected_grid_bounds can be provided, but not both'
+    # Grid all data variables if not specified
+    variables = variables or cond_point_utils_inst.point_variables
+
+    # Allow single variable to be given as a string
+    single_var = (type(variables) == str)
+    if single_var:
+        variables = [variables]
+
+    if native_grid_bounds:
+        reprojected_grid_bounds = cond_point_utils_inst.get_reprojected_bounds(native_grid_bounds,
+                                                                               cond_point_utils_inst.wkt,
+                                                                               grid_wkt)
+    elif reprojected_grid_bounds:
+        native_grid_bounds = cond_point_utils_inst.get_reprojected_bounds(reprojected_grid_bounds,
+                                                                          grid_wkt,
+                                                                          cond_point_utils_inst.wkt)
+    else:  # No reprojection required
+        native_grid_bounds = cond_point_utils_inst.bounds
+        reprojected_grid_bounds = cond_point_utils_inst.bounds
+
+    # Determine spatial grid bounds rounded out to nearest GRID_RESOLUTION multiple
+    pixel_centre_bounds = (round(math.floor(reprojected_grid_bounds[0] / grid_resolution) * grid_resolution, 6),
+                           round(math.floor(reprojected_grid_bounds[1] / grid_resolution) * grid_resolution, 6),
+                           round(math.floor(
+                               reprojected_grid_bounds[2] / grid_resolution - 1.0) * grid_resolution + grid_resolution,
+                                 6),
+                           round(math.floor(
+                               reprojected_grid_bounds[3] / grid_resolution - 1.0) * grid_resolution + grid_resolution,
+                                 6)
+                           )
+
+    # Extend area for points an arbitrary two cells out beyond grid extents for nice interpolation at edges
+    expanded_grid_bounds = [pixel_centre_bounds[0] - 2 * grid_resolution,
+                            pixel_centre_bounds[1] - 2 * grid_resolution,
+                            pixel_centre_bounds[2] + 2 * grid_resolution,
+                            pixel_centre_bounds[3] + 2 * grid_resolution
+                            ]
+
+    expanded_grid_size = [expanded_grid_bounds[dim_index + 2] - expanded_grid_bounds[dim_index] for dim_index in
+                          range(2)]
+
+    # Get width and height of grid
+    width = int(expanded_grid_size[0] / grid_resolution)
+    height = int(expanded_grid_size[1] / grid_resolution)
+
+    spatial_subset_mask = cond_point_utils_inst.get_spatial_mask(
+        cond_point_utils_inst.get_reprojected_bounds(expanded_grid_bounds, grid_wkt, cond_point_utils_inst.wkt))
+
+    # Skip points to reduce memory requirements
+    # TODO: Implement function which grids spatial subsets.
+    point_subset_mask = np.zeros(shape=(cond_point_utils_inst.netcdf_dataset.dimensions['point'].size,), dtype=bool)
+    point_subset_mask[0:-1:point_step] = True
+    point_subset_mask = np.logical_and(spatial_subset_mask, point_subset_mask)
+
+    coordinates = cond_point_utils_inst.xycoords[point_subset_mask]
+    # Reproject coordinates if required
+    if grid_wkt is not None:
+        # N.B: Be careful about XY vs YX coordinate order
+        coordinates = np.array(transform_coords(coordinates[:], cond_point_utils_inst.wkt, grid_wkt))
+
+
+    grid = {}
+    for variable in [cond_point_utils_inst.netcdf_dataset.variables[var_name] for var_name in variables]:
+
+        # If preferences are not given we grid using defaults
+        if grid_kwargs is None:
+            grid_kwargs = {}
+            grid_kwargs[variable.name] = {}
+
+        if not 'log_grid' in grid_kwargs:
+            grid_kwargs[variable.name]['log_grid'] = False
+
+        # Check for the algorithm in the grid kwargs
+        if not 'gdal_algorithm' in grid_kwargs:
+            s = 'invdist:power=2:radius1=250:'
+            s += 'radius2=250:max_points=15:'
+            s += 'min_points=2:nodata=-32768.0'
+            # Defaut
+            grid_kwargs[variable.name]['gdal_algorithm'] = s
+
+        if not 'format' in grid_kwargs:
+            # Defaut
+            grid_kwargs[variable.name]['format'] = 'GTiff'
+
+        if not 'outputType' in grid_kwargs:
+            # Defaut
+            grid_kwargs[variable.name]['outputType'] = gdal.GDT_Float32
+
+        grid_kwargs[variable.name]['width'] = width
+        grid_kwargs[variable.name]['height'] = height
+
+        grid_kwargs[variable.name]['outputSRS'] = grid_wkt
+        grid_kwargs[variable.name]['outputBounds'] = expanded_grid_bounds
+
+        # For 2d arrays
+        if len(variable.shape) == 2:
+
+            a = np.nan * np.ones(shape=(variable.shape[1], int(height),
+                                        int(width)), dtype=np.float32)
+
+            # Iterate
+            for i in range(variable.shape[1]):
+                var_array = variable[point_subset_mask, i].reshape([-1, 1])
+
+                a[i], geotransform = grid_var(var_array, coordinates, grid_kwargs[variable.name])
+
+        elif len(variable.shape) == 1:
+
+            # Create a temporary array
+            var_array = variable[point_subset_mask].reshape([-1, 1])
+
+            a, geotransform = grid_var(var_array, coordinates, grid_kwargs[variable.name])
+
+        grid[variable.name] = a
+
+    grid['geotransform'] = geotransform
+    grid['wkt'] = grid_wkt
+
+    return grid
+

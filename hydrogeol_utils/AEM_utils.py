@@ -487,9 +487,3 @@ class AEM_System:
                 elif moment == "LM":
                     self.LM[item][entry] = parameters[entry]
 
-
-
-
-
-
-

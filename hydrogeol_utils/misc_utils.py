@@ -76,3 +76,23 @@ def block_to_array(file):
         L.append(return_floats(line))
         line = next(file)
     return np.array(L)
+
+def write_vrt_from_csv(infile, x, y, z):
+    """
+    A function for writing a vrt file for a csv point dataset
+
+    """
+    assert infile.endswith('.csv')
+    s = "<OGRVRTDataSource>\n"
+    s+='    <OGRVRTLayer name="{}">\n'.format(infile.split('.')[0])
+    s+='        <SrcDataSource>'
+    s+= infile
+    s+= '</SrcDataSource>\n'
+    s+= '        <GeometryType>wkbPoint</GeometryType>\n'
+    s+= '        <GeometryField separator="," encoding="PointFromColumns" x="{}" y="{}" z="{}"/>\n'.format(x,y,z)
+    s+= '        </OGRVRTLayer>\n'
+    s+= '    </OGRVRTDataSource>'
+    vrt_path = infile.replace('csv', 'vrt')
+    with open(vrt_path, 'w') as f:
+        f.write(s)
+    return vrt_path
