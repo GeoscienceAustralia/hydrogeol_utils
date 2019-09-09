@@ -38,7 +38,7 @@ from rasterio import Affine
 from rasterio.warp import reproject, Resampling
 from hydrogeol_utils import misc_utils
 from geophys_utils._crs_utils import transform_coords
-
+import numpy.ma as ma
 
 def inverse_distance_weights(distance, power):
     """
@@ -75,6 +75,10 @@ def depth_to_thickness(depth):
 
     elif len(depth.shape) == 2:
         thickness[:, 0:-1] = depth[:, 1:] - depth[:, :-1]
+        return thickness
+    elif len(depth.shape) == 3:
+
+        thickness[:-1,:,:] = depth[1:,:, :] - depth[:-1,:, :]
         return thickness
 
 
@@ -229,7 +233,10 @@ def interpolate_depth_data(df, parameter_columns, interval_column,
     if isinstance(parameter_columns, ("".__class__, u"".__class__)):
         parameter_columns = [parameter_columns]
 
-    new_columns = parameter_columns.append(interval_column)
+
+    new_columns = parameter_columns.copy()
+
+    new_columns.append(interval_column)
 
     new_df = pd.DataFrame(columns=new_columns)
 
@@ -249,7 +256,8 @@ def interpolate_depth_data(df, parameter_columns, interval_column,
 
 
 def interpolate_depths_to_intervals(df, parameter_columns, new_depths,
-                                    depth_column='Depth', how='mean'):
+                                    depth_column='Depth', how='mean',
+                                    logspace = None):
     """
     A function that interpolates depth data onto a new set of depths
 
@@ -269,6 +277,8 @@ def interpolate_depths_to_intervals(df, parameter_columns, new_depths,
     if isinstance(parameter_columns, ("".__class__, u"".__class__)):
         parameter_columns = [parameter_columns]
 
+
+
     # Create a dataframe
     new_df = pd.DataFrame(columns = ['Depth_from', "Depth_to"],
                           data= new_depths)
@@ -284,12 +294,20 @@ def interpolate_depths_to_intervals(df, parameter_columns, new_depths,
             # Subset the original dataframe
             df_interval = df.loc[(df[depth_column] >= depth_from) &
                                  (df[depth_column] <= depth_to)]
+            if logspace:
+                df_interval.at[:,item] = np.log10(df_intervals[item])
+
+
             if how == 'mean':
                 new_df.at[index, item] = df_interval[item].mean()
             elif how == 'median':
                 new_df.at[index, item] = df_interval[item].median()
             elif how == 'mode':
                 new_df.at[index, item] = df_interval[item].mode()
+
+            if logspace:
+                new_df.at[index, item] = 10**(new_df.loc[index, item])
+
 
     return new_df
 
@@ -438,7 +456,13 @@ def grid_var(var_array, coordinates, grid_kwargs):
 
     # Output the points into a temporary csv
 
-    os.chdir(tempfile.gettempdir())
+    temp_dir = r'C:\temp\tempfiles'
+    # temp_dir = tempfile.gettempdir() # getting permissions error
+
+    if not os.path.exists(temp_dir):
+        os.mkdir(temp_dir)
+
+    os.chdir(temp_dir)
 
     temp_file = 'pts2grid_temp.csv'
 
@@ -457,16 +481,17 @@ def grid_var(var_array, coordinates, grid_kwargs):
                                algorithm=grid_kwargs['gdal_algorithm'],
                                width=grid_kwargs['width'],
                                height=grid_kwargs['height'],
-                               outputSRS=grid_kwargs['outputSRS'],  # "EPSG:28352"
+                               outputSRS=grid_kwargs['outputSRS'],# "EPSG:28352"
                                outputBounds=grid_kwargs['outputBounds'],
                                zfield='z',
                                layers=vrt_file.split('\\')[-1].split('.')[0])
 
+   # Getting errors frmo tempdir
     outfile = 'temp_grid.tif'
-
+    print("Gridding ", outfile)
     out_ds = gdal.Grid(destName=outfile,
                        srcDS=vrt_file, options=gridopt)
-
+    print("Finished gridding ", outfile)
     geotransform = out_ds.GetGeoTransform()
 
     gridded = out_ds.ReadAsArray()
@@ -502,7 +527,8 @@ def grid_points_gdal(cond_point_utils_inst, grid_resolution,
                      reprojected_grid_bounds=None,
                      grid_wkt=None,
                      point_step=1,
-                     grid_kwargs=None):
+                     grid_kwargs=None,
+                     depth_inds = None):
     '''
     Function that grids points in the cond_point_utils instance within a bounding box using gdal_grid.
     @parameter cond_point_utils_inst: instance of cond_point_utils from geophys_utils
@@ -512,6 +538,7 @@ def grid_points_gdal(cond_point_utils_inst, grid_resolution,
     @parameter reprojected_grid_bounds: Spatial bounding box of area to grid in grid coordinates
     @parameter grid_wkt: WKT for grid coordinate reference system. Defaults to native CRS
     @parameter point_step: Sampling spacing for points. 1 (default) means every point, 2 means every second point, etc.
+    @parameter depth inds: list of depth indices to grid.
 
     @return grid: dictionary with gridded data, geotransform and wkt
     '''
@@ -577,7 +604,6 @@ def grid_points_gdal(cond_point_utils_inst, grid_resolution,
         # N.B: Be careful about XY vs YX coordinate order
         coordinates = np.array(transform_coords(coordinates[:], cond_point_utils_inst.wkt, grid_wkt))
 
-
     grid = {}
     for variable in [cond_point_utils_inst.netcdf_dataset.variables[var_name] for var_name in variables]:
 
@@ -614,12 +640,18 @@ def grid_points_gdal(cond_point_utils_inst, grid_resolution,
         # For 2d arrays
         if len(variable.shape) == 2:
 
-            a = np.nan * np.ones(shape=(variable.shape[1], int(height),
+            if depth_inds is not None:
+                nlayers = len(depth_inds)
+            else:
+                nlayers = variable.shape[1]
+                depth_inds = np.arange(0,nlayers)
+
+            a = np.nan * np.ones(shape=(nlayers, int(height),
                                         int(width)), dtype=np.float32)
 
-            # Iterate
-            for i in range(variable.shape[1]):
-                var_array = variable[point_subset_mask, i].reshape([-1, 1])
+            # Iterate through the layers
+            for i, ind in enumerate(depth_inds):
+                var_array = variable[point_subset_mask, ind].reshape([-1, 1])
 
                 a[i], geotransform = grid_var(var_array, coordinates, grid_kwargs[variable.name])
 
@@ -636,4 +668,73 @@ def grid_points_gdal(cond_point_utils_inst, grid_resolution,
     grid['wkt'] = grid_wkt
 
     return grid
+# Now we want to calculate a weighted average for the AEM
 
+def weighted_average(layer_top_depth, variable, depth_top,
+                    depth_bottom):
+    """
+    @parameter layer_top_depth: (1D) or 3d numpy array. If 1D array we assume a consistent layer
+    depth discretisation. A 3d the array must be shaped (layer_top_depth, height, width) - TODO
+    @parameter: a 3-dimensional numpy array with the variable to be averaged (e.g conductivity)
+    of shape (layer_top_depth, height, width)
+    @parameter depth_top: a 2D numpy array (width, height) with the layer top depth
+    @parameter depth_bottom: a 2D numpy array (width, height) with the layer bottom depth
+    """
+
+    # If layer top depth is a 1d array make it 3d
+    if len(layer_top_depth.shape) == 1:
+        ncells = depth_top.flatten().shape
+        layer_top_depth = np.tile(layer_top_depth, ncells).reshape((layer_top_depth.shape[0],
+                                                                  depth_top.shape[0],
+                                                                  depth_top.shape[1]),
+                                                                  order = 'F')
+    # Otherwise assert correct shape
+    else:
+        assert len(layer_top_depth.shape) == 3
+
+    # Repeat the depth top and bottom
+    depth_top = np.repeat(depth_top[np.newaxis, :, :],
+                          variable.shape[0], axis=0)
+
+    depth_bottom = np.repeat(depth_bottom[np.newaxis, :, :],
+                          variable.shape[0], axis=0)
+
+
+    # calculate thickness
+    thickness =  depth_to_thickness(layer_top_depth)
+
+    # Clip slice the thickness and layer top depth arrays
+
+    thickness = thickness[:variable.shape[0],:,:]
+    layer_top_depth = layer_top_depth[:variable.shape[0],:,:]
+
+    # Now we want to find the indices for each grid cell that is outside
+    # of the layer
+
+    mask = np.less_equal(depth_bottom,layer_top_depth)
+    mask+= np.isnan(depth_bottom)
+    mask += np.isnan(variable)
+
+    # Set thickness of AEM layers outside of stratigraphy to 0
+    thickness[mask] = np.nan
+
+    # Create a masked array for the variable
+
+    var_mskd = ma.masked_array(variable,
+                               mask = ~np.isnan(variable))
+
+    # Calculate the weighted average by multiplying variable by
+    # thickness and dividing by total thickness
+
+    # Multiply the array and take the sum along the depth axis
+    a1 =  var_mskd*thickness
+    a2 = a1.data.sum(axis = 0)
+
+    # Divide by the sum of the thickness
+
+    a3 = np.nansum(thickness, axis = 0)
+    a3[a3 == 0] = np.nan
+    # Make zeros into nan
+
+
+    return np.divide(a2,a3)

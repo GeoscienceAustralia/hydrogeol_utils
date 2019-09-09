@@ -1,3 +1,14 @@
+README.md
+setup.py
+hydrogeol_utils/AEM_utils.py
+hydrogeol_utils/SNMR_utils.py
+hydrogeol_utils/__init__.py
+hydrogeol_utils/borehole_utils.py
+hydrogeol_utils/db_utils.py
+hydrogeol_utils/grid_utils.py
+hydrogeol_utils/misc_utils.py
+hydrogeol_utils/plotting_utils.py
+hydrogeol_utils/spatial_functions.py
 hydrogeol_utils.egg-info/PKG-INFO
 hydrogeol_utils.egg-info/SOURCES.txt
 hydrogeol_utils.egg-info/dependency_links.txt

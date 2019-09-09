@@ -26,10 +26,12 @@ These are functions used to process AEM data from netcdf objects or miscellaneou
 import numpy as np
 from hydrogeol_utils import spatial_functions, misc_utils
 import pandas as pd
-import re
+import re, os
 from geophys_utils._transect_utils import coords2distance
 from geophys_utils._netcdf_point_utils import NetCDFPointUtils
 from geophys_utils._netcdf_line_utils import NetCDFLineUtils
+from collections import OrderedDict
+from math import ceil, log10
 
 
 # A function for getting the most representative conductivity profile given
@@ -50,6 +52,11 @@ def extract_conductivity_profile(dataset, distances, indices,
     :return:
     array or dataframe with representative conductivity profile
     """
+    # Ensure that the indices and distances are arrays
+    if not isinstance(distances ,(list, tuple, np.ndarray)):
+        distances = np.array([distances])
+    if not isinstance(indices ,(list, tuple, np.ndarray)):
+        indices = np.array([indices])
 
     # Now calculate weights based on the distances
     idws = spatial_functions.inverse_distance_weights(distances, 2)
@@ -63,7 +70,6 @@ def extract_conductivity_profile(dataset, distances, indices,
 
     # Iteratively extract the conductivity profiles using the indices,
     # min_key and aem_keys
-
 
     for i, ind in enumerate(indices):
         # Get the logconductivity proile
@@ -347,7 +353,8 @@ def parse_wb_file(fname):
     :param fname: workbench file
     :return:
     """
-    key_terms = ["INFO", "COORDINATE SYSTEM", "DATA TYPE", "NODE NAME(S)"]
+    key_terms = ["INFO", "COORDINATE SYSTEM", "DATA TYPE", "NODE NAME(S)",
+                 "DUMMY", "DATA UNIT", "NUMBER OF GATES"]
 
     # The data will be written into a dictionary
     inversion = {}
@@ -366,14 +373,21 @@ def parse_wb_file(fname):
                 header = False
             # If it is a header, add the line to the string
             if header:
+
                 s += line
             # Otherwise extract the data
             if not header:
-                inversion['data'] = np.loadtxt(f)
+                # Split the header on line breaks
+                L = s.split('\n')
+                # Assign the dictionary with the h
+                inversion['header'] = L[-2][1:].strip().split()
+
+                # Get data as structured array
+                inversion['data'] = np.genfromtxt(f, dtype = None,
+                                                  names = inversion['header'])
 
                 break
-    # Split based on the line break
-    L = s.split('\n')
+
 
     # Now we want to find the key word and add them as entries into the dictionary
     for item in key_terms:
@@ -487,3 +501,333 @@ class AEM_System:
                 elif moment == "LM":
                     self.LM[item][entry] = parameters[entry]
 
+
+# These functions assist with writing adhoc arrays and metadata into aseg-gdf
+# compliant data and .dfn files
+def write_record2dfn_file(dfn_file,
+                          rt,
+                          name,
+                          aseg_gdf_format,
+                          definition=None,
+                          defn=None,
+                          st='RECD'):
+    '''
+    Helper function to write line to .dfn file.
+    @param dfn_file: output file for DEFN line
+    @param rt: value for "RT=<rt>" portion of DEFN line, e.g. '' or 'PROJ'
+    @param name: Name of DEFN
+    @param aseg_gdf_format: ASEG-GDF output format, e.g. 'I5', 'D12.1' or 'A30'
+    @param definition=None: Definition string
+    @param defn=None: New value of DEFN number. Defaults to self.defn+1
+    @param st: value for "RT=<rt>" portion of DEFN line. Default = 'RECD'
+
+    @return line: output line
+    '''
+
+    line = 'DEFN {defn} ST={st},RT={rt}; {name}'.format(defn=defn,
+                                                        st=st,
+                                                        rt=rt,
+                                                        name=name,
+                                                        )
+
+    if aseg_gdf_format:
+        line +=  ': {aseg_gdf_format}'.format(aseg_gdf_format=aseg_gdf_format)
+
+    if definition:
+        line += ': ' + definition
+
+    dfn_file.write(line + '\n')
+    return line
+
+def write_dfn_file(dfn_out_path, field_definitions):
+    '''
+    Helper function to output .dfn file
+    '''
+    def write_defns(dfn_file, field_definitions):
+        """
+        Helper function to write multiple DEFN lines
+        """
+        defn = 1 # reset DEFN number
+        for field_definition in field_definitions:
+            short_name = field_definition['short_name']
+
+            optional_attribute_list = []
+
+            units = field_definition.get('units')
+            if units:
+                optional_attribute_list.append('UNITS={units}'.format(units=units))
+
+            fill_value = field_definition.get('fill_value')
+            if fill_value is not None:
+                optional_attribute_list.append('NULL=' + field_definition['python_format'].format(fill_value).strip())
+
+            long_name = field_definition.get('long_name')
+            if long_name:
+                optional_attribute_list.append('NAME={long_name}'.format(long_name=long_name))
+
+            if optional_attribute_list:
+                definition = ' , '.join(optional_attribute_list)
+            else:
+                definition = None
+            if defn == 1:
+                rt = 'DATA'
+            else:
+                rt = ''
+            write_record2dfn_file(dfn_file,
+                                       rt=rt,
+                                       name=short_name,
+                                       aseg_gdf_format=field_definition['format'],
+                                       definition=definition,
+                                       defn=defn
+                                       )
+            defn+=1
+
+
+        # Write 'END DEFN'
+        write_record2dfn_file(dfn_file,
+                                   rt='',
+                                   name='END DEFN',
+                                   aseg_gdf_format=''
+                                   )
+
+        return # End of function write_defns
+    # Create, write and close .dat file
+
+    dfn_file = open(dfn_out_path, 'w')
+    dfn_file.write('DEFN   ST=RECD,RT=COMM;RT:A4;COMMENTS:A76\n') # TODO: Check this first line
+
+    write_defns(dfn_file, field_definitions)
+
+    dfn_file.close()
+
+# Approximate maximum number of significant decimal figures for each signed datatype
+SIG_FIGS = OrderedDict([('uint8', 4), # 128
+                        ('uint16', 10), # 32768
+                        ('uint32', 19), # 2147483648 - should be 9, but made 10 because int64 is unsupported
+                        ('uint64', 30), # 9223372036854775808 - Not supported in netCDF3 or netCDF4-Classic
+                        ('int8', 2), # 128
+                        ('int16', 4), # 32768
+                        ('int32', 10), # 2147483648 - should be 9, but made 10 because int64 is unsupported
+                        ('int64', 19), # 9223372036854775808 - Not supported in netCDF3 or netCDF4-Classic
+                        # https://en.wikipedia.org/wiki/Floating-point_arithmetic#IEEE_754:_floating_point_in_modern_computers
+                        ('float32', 7), # 7.2
+                        ('float64', 35) # 15.9 - should be 16, but made 35 to support unrealistic precision specifications
+                        ]
+                       )
+
+
+ASEG_DTYPE_CODE_MAPPING = {'uint8': 'I',
+                           'uint16': 'I',
+                           'uint32': 'I',
+                           'uint64': 'I',
+                           'int8': 'I',
+                           'int16': 'I',
+                           'int32': 'I',
+                           'int64': 'I',
+                           'float32': 'F', # real in exponent form
+                           'float64': 'F', # double precision real in exponent form
+                           'str': 'A'
+                           }
+
+def decode_aseg_gdf_format(aseg_gdf_format):
+    '''
+    Function to decode ASEG-GDF format string
+    @param aseg_gdf_format: ASEG-GDF format string
+
+    @return columns: Number of columns (i.e. 1 for 1D data, or read from format string for 2D data)
+    @return aseg_dtype_code: ASEG-GDF data type character, e.g. "F" or "I"
+    @return width_specifier:  Width of field in number of characters read from format string
+    @return decimal_places: Number of fractional digits read from format string
+    '''
+    if not aseg_gdf_format:
+        raise BaseException('No ASEG-GDF format string to decode')
+
+    match = re.match('(\d+)*(\w)(\d+)\.*(\d+)*', aseg_gdf_format)
+
+    if not match:
+        raise BaseException('Invalid ASEG-GDF format string {}'.format(aseg_gdf_format))
+
+    columns = int(match.group(1)) if match.group(1) is not None else 1
+    aseg_dtype_code = match.group(2).upper()
+    width_specifier = int(match.group(3))
+    decimal_places = int(match.group(4)) if match.group(4) is not None else 0
+
+    logger.debug('aseg_gdf_format: {}, columns: {}, aseg_dtype_code: {}, width_specifier: {}, decimal_places: {}'.format(aseg_gdf_format,
+                                                                                                                      columns,
+                                                                                                                      aseg_dtype_code,
+                                                                                                                      width_specifier,
+                                                                                                                      decimal_places
+                                                                                                                      )
+                 )
+    return columns, aseg_dtype_code, width_specifier, decimal_places
+
+def aseg_gdf_format2dtype(aseg_gdf_format):
+    '''
+    Function to return Python data type string and other precision information from ASEG-GDF format string
+    @param aseg_gdf_format: ASEG-GDF format string
+
+    @return dtype: Data type string, e.g. int8 or float32
+    @return columns: Number of columns (i.e. 1 for 1D data, or read from format string for 2D data)
+    @return width_specifier:  Width of field in number of characters read from format string
+    @return decimal_places: Number of fractional digits read from format string
+    '''
+    columns, aseg_dtype_code, width_specifier, decimal_places = decode_aseg_gdf_format(aseg_gdf_format)
+    dtype = None # Initially unknown datatype
+
+    # Determine type and size for required significant figures
+    # Integer type - N.B: Only signed types available
+    if aseg_dtype_code == 'I':
+        assert not decimal_places, 'Integer format cannot be defined with fractional digits'
+        for test_dtype, sig_figs in SIG_FIGS.items():
+            if test_dtype.startswith('int') and sig_figs >= width_specifier:
+                dtype = test_dtype
+                break
+        assert dtype, 'Invalid width_specifier of {}'.format(width_specifier)
+
+    # Floating point type - use approximate sig. figs. to determine length
+    #TODO: Remove 'A' after string field handling has been properly implemented
+    elif aseg_dtype_code in ['D', 'E', 'F']: # Floating point
+        for test_dtype, sig_figs in SIG_FIGS.items():
+            if test_dtype.startswith('float') and sig_figs >= width_specifier-2: # Allow for sign and decimal place
+                dtype = test_dtype
+                break
+        assert dtype, 'Invalid floating point format of {}.{}'.format(width_specifier, decimal_places)
+
+    elif aseg_dtype_code == 'A':
+        assert not decimal_places, 'String format cannot be defined with fractional digits'
+        dtype = '<U{}'.format(width_specifier) # Numpy fixed-length string type
+
+    else:
+        raise BaseException('Unhandled ASEG-GDF dtype code {}'.format(aseg_dtype_code))
+
+    logger.debug('aseg_dtype_code: {}, columns: {}, width_specifier: {}, decimal_places: {}'.format(dtype,
+                                                                                                 columns,
+                                                                                                 width_specifier,
+                                                                                                 decimal_places
+                                                                                                 )
+                 )
+    return dtype, columns, width_specifier, decimal_places
+
+
+def variable2aseg_gdf_format(array_variable, decimal_places=None):
+    '''
+    Function to return ASEG-GDF format string and other info from data array or netCDF array variable
+    @param array_variable: data array or netCDF array variable
+    @param decimal_places: Number of decimal places to respect, or None for value derived from datatype and values
+
+    @return aseg_gdf_format: ASEG-GDF format string
+    @return dtype: Data type string, e.g. int8 or float32
+    @return columns: Number of columns (i.e. 1 for 1D data, or second dimension size for 2D data)
+    @return width_specifier: Width of field in number of characters
+    @return decimal_places: Number of fractional digits (derived from datatype sig. figs - width_specifier)
+    @param python_format: Python Formatter string for fixed-width output
+    '''
+    if len(array_variable.shape) <= 1: # 1D variable or scalar
+        columns = 1
+    elif len(array_variable.shape) == 2: # 2D variable
+        columns = array_variable.shape[1]
+    else:
+        raise BaseException('Unable to handle arrays with dimensionality > 2')
+
+    data_array = array_variable[:]
+
+    # Try to determine the dtype string from the variable and data_array type
+
+    if not len(array_variable.shape): # Scalar
+        dtype = type(data_array).__name__
+        if dtype == 'str':
+            width_specifier = len(data_array) + 1
+            decimal_places = 0
+        elif dtype == 'ndarray': # Single-element array
+            dtype = str(array_variable.dtype)
+            data = np.asscalar(data_array)
+
+            sig_figs = SIG_FIGS[dtype] + 1 # Look up approximate significant figures and add 1
+            sign_width = 1 if data < 0 else 0
+            integer_digits = ceil(log10(np.abs(data) + 1.0))
+    else: # Array
+        dtype = str(array_variable.dtype)
+        print(dtype)
+        if dtype in ['str', "<class 'str'>"]: # String array or string array variable
+            dtype = 'str'
+            width_specifier = max([len(string.strip()) for string in data_array]) + 1
+            decimal_places = 0
+
+        else:  # Numeric datatype array
+            # Include fill value if required
+            if type(data_array) == np.ma.core.MaskedArray:
+                logger.debug('Array is masked. Including fill value.')
+                data_array = data_array.data
+
+            sig_figs = SIG_FIGS[dtype] + 1 # Look up approximate significant figures and add 1
+            sign_width = 1 if np.nanmin(data_array) < 0 else 0
+            integer_digits = ceil(log10(np.nanmax(np.abs(data_array)) + 1.0))
+
+    aseg_dtype_code = ASEG_DTYPE_CODE_MAPPING.get(dtype)
+    # Here we decide if we want to use exponential or floating point form
+    # Rather ad hoc
+    if aseg_dtype_code == 'F':
+        print(np.abs(np.nanmin(data_array)))
+        print(np.log10(np.abs(np.nanmax(data_array)/np.nanmin(data_array))))
+        ### TODO fix up the errors that this si throwing
+
+        if np.abs(np.nanmin(data_array)) < 10**-2: # small numbers
+            if dtype  == 'float64':
+                aseg_dtype_code = 'D'
+            elif dtype  == 'float32':
+                aseg_dtype = 'E'
+        elif np.log10(np.abs(np.nanmax(data_array)/np.nanmin(data_array))) > 2.5:
+            if dtype  == 'float64':
+                aseg_dtype_code = 'D'
+            elif dtype  == 'float32':
+                aseg_dtype = 'E'
+        print(aseg_dtype_code)
+    assert aseg_dtype_code, 'Unhandled dtype {}'.format(dtype)
+
+    if aseg_dtype_code == 'I': # Integer
+        decimal_places = 0
+        width_specifier = integer_digits + sign_width + 1
+        aseg_gdf_format = 'I{}'.format(width_specifier)
+        python_format = '{' + ':>{:d}.{:d}f'.format(width_specifier, decimal_places) + '}'
+
+    elif aseg_dtype_code in ['F', 'D', 'E']: # Floating point
+        # If array_variable is a netCDF variable with a "format" attribute, use stored format string to determine decimal_places
+        if decimal_places is not None:
+            decimal_places = min(decimal_places, abs(sig_figs-integer_digits))
+
+        elif hasattr(array_variable, 'aseg_gdf_format'):
+            _columns, _aseg_dtype_code, _integer_digits, decimal_places = decode_aseg_gdf_format(array_variable.aseg_gdf_format)
+            decimal_places = min(decimal_places, abs(sig_figs-integer_digits))
+            logger.debug('decimal_places set to {} from variable attribute aseg_gdf_format {}'.format(decimal_places, array_variable.aseg_gdf_format))
+        else: # No aseg_gdf_format variable attribute
+            decimal_places = abs(sig_figs-integer_digits) # Allow for full precision of datatype
+            logger.debug('decimal_places set to {} from sig_figs {} and integer_digits {}'.format(decimal_places, sig_figs, integer_digits))
+
+        width_specifier = min(sign_width + integer_digits + decimal_places + 2,
+                              sign_width + sig_figs + 2
+                              )
+        if aseg_dtype_code == 'D':
+            width_specifier += 4
+
+        aseg_gdf_format = '{}{}.{}'.format(aseg_dtype_code, width_specifier, decimal_places)
+        if aseg_dtype_code == 'F': # Floating point notation
+            python_format = '{' + ':>{:d}.{:d}f'.format(width_specifier, decimal_places) + '}' # Add 1 to width for decimal point
+        else: # Exponential notation for 'D' or 'E'
+            python_format = '{' + ':>{:d}.{:d}E'.format(width_specifier, decimal_places) + '}' # Add 1 to width for decimal point
+
+    elif aseg_dtype_code == 'A': # String
+        if hasattr(array_variable, 'aseg_gdf_format'):
+            _columns, _aseg_dtype_code, width_specifier, decimal_places = decode_aseg_gdf_format(array_variable.aseg_gdf_format)
+            aseg_gdf_format = array_variable.aseg_gdf_format
+        else:
+            aseg_gdf_format = 'A{}'.format(width_specifier)
+
+        python_format = '{' + ':>{:d}s'.format(width_specifier) + '}'
+    else:
+        raise BaseException('Unhandled ASEG-GDF dtype code {}'.format(aseg_dtype_code))
+
+    # Pre-pend column count to start of aseg_gdf_format
+    if columns > 1:
+        aseg_gdf_format = '{}{}'.format(columns, aseg_gdf_format)
+
+    return aseg_gdf_format, dtype, columns, width_specifier, decimal_places, python_format

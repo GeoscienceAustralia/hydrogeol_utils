@@ -1,23 +1,34 @@
 workbench_header_translation:
+    TIMESTAMP: {long_name: Decimal days since midnight December 31st 1899, short_name: DateTime,units: days}
+    LINE_NO:  {long_name: Line number, short_name: line}
+    UTMX: {long_name: UTM Easting (x) ordinate (GDA94 MGA Zone 52), short_name: easting, units: m}
+    UTMY: {long_name: UTM Northing (y) ordinate (GDA94 MGA Zone 52), short_name: northing, units: m}
+    lat: {long_name: Latitude, short_name: latitude (GDA94), units: degrees North}
+    lon: {long_name: Longitude, short_name: longitude (GDA94), units: degrees East}
+    GA_project: {short_name: GA_project, long_name: Geoscience Australia airborne survey project number}
+    Job_No: {short_name: Job_No, long_name: SkyTEM Australia Job Number}
+    ELEVATION: {long_name: Ground elevation relative to sea-level, short_name: elevation,units: m}
+    TX_ALTITUDE: {long_name: Measured height of the TXRX frame, short_name: tx_height_measured, units: m}
+    TILT_X: {long_name: Tilt of frame from horizontal in flight direction, short_name: x_tilt,units: degrees}
+    TILT_Y: {long_name: Tilt of frame from horizontal perpendicular to flight direction, short_name: y_tilt,units: degrees}
+    curr_lm: {long_name: Low Moment peak transmitter current, short_name: LM_current, units: A}
+    curr_hm: {long_name: High Moment peak transmitter current, short_name: HM_current, units: A}
+    DBDT_Ch1GT: {long_name: Z-component Low Moment dB/dt processed and normalised, short_name: low_moment_Z-component_EM_data, units: V/(A.turns.m4),
+    dimensions: low_moment_gate}
+    DBDT_Ch2GT: {long_name: Z-component High Moment dB/dt processed and normalised, short_name: high_moment_Z-component_EM_data, units: V/(A.turns.m4),
+    dimensions: high_moment_gate}
+    DBDT_STD_Ch1GT: {long_name: Z-component Low Moment gates relative uncertainty, short_name: rel_uncertainty_low_moment_Z-component,
+    dimensions: low_moment_gate}
+    DBDT_STD_Ch2GT: {long_name: Z-component High Moment gates relative uncertainty, short_name: rel_uncertainty_high_moment_Z-component,
+    dimensions: high_moment_gate}
     LINE: {long_name: Line number, short_name: line}
     X: {long_name: UTM Easting (x) ordinate, short_name: easting, units: m}
     Y: {long_name: UTM Northing (y) ordinate, short_name: northing, units: m}
-    TIME: {loalc time???}
+    fiducial: {long_name: Fiducial, short_name: fiducial}
     FID: {long_name: Inversion sequence number, short_name: sequence}
-    RECORD: 
     TOPO: {long_name: Ground elevation relative to sea-level, short_name: elevation,units: m}
     ALT: {long_name: Measured height of the TXRX frame, short_name: tx_height_measured, units: m}
-    INVALT: {long_name: Inverted height of the TXRX frame, short_name: tx_height_inverted,units: m}}
-    INVALTSTD: 
-    DELTAALT: 
-    TILT:
-    INVTILT:
-    INVTILTSTD:
-    SHIFT:
-    INVSHIFT:
-    INVSHIFTSTD:
-    NUMDATA:
-    SEGMENTS:
+    INVALT: {long_name: Inverted height of the TXRX frame, short_name: tx_height_inverted,units: m}
     RESDATA: {long_name: Data residual, short_name: data_residual}
     RESTOTAL: {long_name: Total Residual, short_name: total_residual}
     RHO_I_: {long_name: Layer resistivity, short_name: resistivity, units: ohm.m, dimensions: layer}

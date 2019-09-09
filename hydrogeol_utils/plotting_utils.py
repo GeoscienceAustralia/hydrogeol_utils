@@ -875,7 +875,8 @@ def plot_grid(ax, gridded_variables, variable, panel_kwargs, x_ax_var='grid_dist
     return im
 
 
-def plot_single_line(ax, gridded_variables, variable, panel_kwargs):
+def plot_single_line(ax, gridded_variables, variable, panel_kwargs,
+                     x_ax_var='grid_distances'):
     """
 
     :param ax:
@@ -893,7 +894,7 @@ def plot_single_line(ax, gridded_variables, variable, panel_kwargs):
     else:
         colour = 'black'
 
-    lin = ax.plot(gridded_variables['grid_distances'], data, colour)
+    lin = ax.plot(gridded_variables[x_ax_var], data, colour)
 
     # Extract ymin and ymax if specified, otherwise assign based on the range with the line dataset
     if 'ymin' in panel_kwargs.keys():
@@ -923,7 +924,8 @@ def plot_single_line(ax, gridded_variables, variable, panel_kwargs):
     return lin
 
 
-def plot_multilines_data(ax, gridded_variables, variable, panel_kwargs):
+def plot_multilines_data(ax, gridded_variables, variable, panel_kwargs,
+                         x_ax_var='grid_distances'):
     # Define the data
 
     data = gridded_variables[variable]
@@ -936,7 +938,7 @@ def plot_multilines_data(ax, gridded_variables, variable, panel_kwargs):
         linewidth = 1
     lins = []
     for i, col in enumerate(data.T):
-        lin = ax.plot(gridded_variables['grid_distances'], data.T[i],
+        lin = ax.plot(gridded_variables[x_ax_var], data.T[i],
                       color=colour, linewidth=linewidth)
         lins.append(lin)
         ax.set_yscale('log')
@@ -1009,6 +1011,10 @@ def align_axes(ax_array):
 
     for i, ax in enumerate(ax_array):
         ax.set_position([x0, ax_pos[i].y0, ax_width, ax_pos[i].height])
+
+    # Iterate through the axes and get position
+    for i, ax in enumerate(ax_array):
+        ax_pos[i] = ax.get_position()
 
     return ax_pos
 
@@ -1235,30 +1241,33 @@ def add_1d_layered_model(ax, df, gridded_variables, plot_variable, xy_columns, c
         ax.add_patch(rect)
 
 
-def add_downhole_log_data(ax, df, gridded_variables, plot_variable, xy_columns, cmap='jet',
-                          colour_stretch=[0, 0.2], log_stretch=False, max_distance=200., stick_thickness=150.):
+def add_downhole_log_data(ax, df, gridded_variables, plot_variable, xy_columns,
+                          cmap='jet',colour_stretch=[0, 0.2], log_stretch=False,
+                          max_distance=200., stick_thickness=150.):
 
     # Get the coordinates of the section
     utm_coords = np.hstack((gridded_variables['easting'].reshape([-1, 1]),
                             gridded_variables['northing'].reshape([-1, 1])))
 
+
     # Find the nearest neighbours within the maximum distance
-    d, i = spatial_functions.nearest_neighbours(df[xy_columns].values,
+    d, i = spatial_functions.nearest_neighbours(df[xy_columns].values[0:1],
                                                utm_coords,
                                                points_required=1,
                                                max_distance=max_distance)
 
+    # Kill the function if the downhole logs is not within the max distance
+    if np.isnan(d).all():
+        return None
+    else:
+        print(str(df['borehole_id'].unique()), ' added to plot')
+
     # Add the minimum distance to the dataframe and remove nulls (i.e. those
     # that have a distance greater than the maximum allowable as denoted by a value
     # that is greater thant the length of the xy coordinates
-    df['min_index'] = i
+    df['min_index'] = i[0]
 
     df = df[df['min_index'] < len(utm_coords)]
-
-    # Kill the function if the downhole logs is not within the max distance
-    if len(df) == 0:
-        return None
-
 
 
     # Create an elevation from, to and distance along the line using the elevation and
@@ -1303,6 +1312,8 @@ def add_downhole_log_data(ax, df, gridded_variables, plot_variable, xy_columns, 
     rect = Rectangle((distance_along_line, df['Elevation_from'].min()), stick_thickness,
                      thickness, edgecolor='k', facecolor='none')
     ax.add_patch(rect)
+
+    return True
 
 def add_custom_colourbar(ax, cmap, vmin, vmax, xlabel):
     """

@@ -16,3 +16,5 @@ Requires: shapely
 Requires: scipy
 Requires: setuptools
 Requires: sqlalchemy
+Requires: rasterio
+Requires: cartopy
