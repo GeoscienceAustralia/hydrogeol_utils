@@ -25,11 +25,10 @@ These are functions used to process SNMR data from  spatialite database
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 def choose_snmr_site_acquisition(df_acquisitions,
-                                 pulse_sequence_criteria,
+                                 pulse_sequence_criteria = ['FID'],
                                  pulse_length_criteria="max"):
     """
 
@@ -40,6 +39,10 @@ def choose_snmr_site_acquisition(df_acquisitions,
     or smaller pulse length is prioritised
     :return:
     """
+
+    # We need the pulse sequence to be a list
+    if isinstance(pulse_sequence_criteria, str):
+        pulse_sequence_criteria = list(pulse_sequence_criteria)
 
     # Our acquisition ids are appended to an empty list
     acqu_ids = []
@@ -55,7 +58,7 @@ def choose_snmr_site_acquisition(df_acquisitions,
 
             acqu_ids.append(int(df_acquisitions[df_acquisitions.site_id == item].index.values))
 
-            # If there are more than one acuqisitions at the site we revert to other criterios
+            # If there are more than one acuqisitions at the site we revert to other criterias
         elif len(df_acquisitions[criterion1]) > 1:
 
             # Apply the pulse sequence criteria
@@ -72,7 +75,7 @@ def choose_snmr_site_acquisition(df_acquisitions,
 
             if pulse_length_criteria == 'min':
                 criterion3 = df_acquisitions[criterion1][criterion2]['pulse_length'].map(
-                    lambda x: x == np.max(pulse_lengths))
+                    lambda x: x == np.min(pulse_lengths))
             elif pulse_length_criteria == 'max':
                 criterion3 = df_acquisitions[criterion1][criterion2]['pulse_length'].map(
                     lambda x: x == np.max(pulse_lengths))
@@ -87,7 +90,7 @@ def choose_snmr_site_acquisition(df_acquisitions,
     # Return the indices
     return acqu_ids
 
-# This function extracts the K profile using the SDR equation
+
 
 def sdr_k_profile(df, N=1, C=4000):
     """
@@ -167,7 +170,8 @@ def extract_snmr_inversions(acquisition_ids, connection, mask_below_doi=True):
 
         return df_inversions.iloc[condition]
 
-def plot_profile(ax, df, doi= None, plot_mobile_water = False):
+def plot_profile(ax, df, doi= None, plot_mobile_water = False,
+                 water_table_depth = None):
     """
     Function for plotting SNMR profiles similarly to the GMR inversion
     software. This function allows customised plots and importantly
@@ -176,15 +180,12 @@ def plot_profile(ax, df, doi= None, plot_mobile_water = False):
     :param ax: matplotlib axis
     :param df: individual inversion dataframe
     :param doi: depth of investigation
-    :param plot_mobile_water: boolean flag for plotting
+    :param plot_mobile_water: boolean flag for plotting mobile water
     mobile water
+    :param water_table_depth float of water table depth to be plotted
     :return:
     matplotlib axis with profile plotted
     """
-
-
-    # invert the y axix so that depth in a positive number
-    #plt.gca().invert_yaxis()
 
     # define plot data using pandas series names
     y = df['Depth_from'].values
@@ -225,9 +226,16 @@ def plot_profile(ax, df, doi= None, plot_mobile_water = False):
 
     if doi is not None:
 
-        ax.hlines(doi, 0, np.max(Total) + 5,
+        ax.hlines(doi, ax.get_xlim()[0], ax.get_xlim()[1],
                   color='green', linestyles='dotted')
         ax.text(np.max(Total) - 5, (doi - 1),
                 'Depth of investigation', fontsize=6)
+    if water_table_depth is not None:
+
+        ax.hlines(water_table_depth, 0, np.max(Total) + 5,
+                  color='k', linestyles='dashed')
+        ax.text(np.max(Total) - 0.1*np.max(Total),
+                (water_table_depth - 1),
+                'water table', fontsize=6)
 
     return ax

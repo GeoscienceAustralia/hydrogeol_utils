@@ -27,20 +27,17 @@ import netCDF4
 import math
 from math import log10, floor, pow
 import os
-import gc
 import collections
-
-import numpy as np
-import pandas as pd
-
+import gc
 from scipy.interpolate import griddata
-
+from scipy.interpolate import interp1d
+import numpy as np
 from geophys_utils._netcdf_line_utils import NetCDFLineUtils
 from geophys_utils._transect_utils import coords2distance
 from hydrogeol_utils import spatial_functions
 from geophys_utils import get_spatial_ref_from_wkt
 import h5py
-
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.cm as cm
@@ -48,14 +45,14 @@ from matplotlib.patches import Rectangle
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
 from matplotlib.patches import Polygon as mPolygon
-from matplotlib.collections import PatchCollection, LineCollection
+from matplotlib.collections import LineCollection
 import matplotlib.image as mpimg
-import matplotlib.text as mtext
 
 from skimage.transform import resize
 
 import cartopy.crs as ccrs
 import cartopy.io.img_tiles as cimgt
+
 
 
 class ConductivitySectionPlot:
@@ -155,7 +152,7 @@ class ConductivitySectionPlot:
         return interpolated, var_dict
 
 
-    def grid_conductivity_variables(self, line, cond_var_dict, gridding_params):
+    def grid_conductivity_variables(self, line, cond_var_dict, gridding_params, smoothed = False):
 
         """
 
@@ -192,9 +189,13 @@ class ConductivitySectionPlot:
         vars_1d = [v for v in self.conductivity_variables if cond_var_dict[v].ndim == 1]
 
         # Generator for inteprolating 2D variables from the vars_2d list
-        interp2d = interpolate_2d_vars(vars_2d, cond_var_dict, gridding_params['xres'],
-                                       gridding_params['yres'], gridding_params['layer_subdivisions'],
-                                       gridding_params['resampling_method'])
+        if not smoothed:
+            interp2d = interpolate_2d_vars(vars_2d, cond_var_dict, gridding_params['xres'],
+                                       gridding_params['yres'])
+        else:
+            interp2d = interpolate_2d_vars_smooth(vars_2d, cond_var_dict, gridding_params['xres'],
+                                           gridding_params['yres'], gridding_params['layer_subdivisions'],
+                                           gridding_params['resampling_method'])
 
         for var in vars_2d:
             # Generator yields the interpolated variable array
@@ -205,7 +206,8 @@ class ConductivitySectionPlot:
         interpolated['grid_elevations'] = cond_var_dict['grid_elevations']
 
         # Generator for inteprolating 1D variables from the vars_1d list
-        interp1d = interpolate_1d_vars(vars_1d, cond_var_dict, gridding_params['resampling_method'])
+        interp1d = interpolate_1d_vars(vars_1d, cond_var_dict,
+                                       gridding_params['resampling_method'])
 
         for var in vars_1d:
             # Generator yields the interpolated variable array
@@ -217,7 +219,7 @@ class ConductivitySectionPlot:
 
     def grid_variables(self, xres, yres, lines,
                        layer_subdivisions = None, resampling_method = 'linear',
-                       save_hdf5 = False, hdf5_dir = None,
+                       smoothed = False, save_hdf5 = False, hdf5_dir = None,
                        overwrite_hdf5 = True, return_dict = True):
         """
         A function for interpolating 1D and 2d variables onto a vertical grid
@@ -263,7 +265,6 @@ class ConductivitySectionPlot:
         else:
             raise ValueError("Check lines variable.")
 
-
         # First create generators for returning coordinates and variables for the lines
 
         if plot_cond:
@@ -292,7 +293,7 @@ class ConductivitySectionPlot:
                 cond_var_dict['utm_coordinates'] = self.condLineUtils.utm_coords(cond_var_dict['coordinates'])[1]
 
                 interpolated[line_no] =  self.grid_conductivity_variables(line_no, cond_var_dict,
-                                                                          gridding_params)
+                                                                          gridding_params, smoothed=smoothed)
 
             if plot_dat:
                 # Extract variables from the data
@@ -381,10 +382,149 @@ def purge_invalid_elevations(var_grid, grid_y, min_elevation_grid,
     return var_grid
 
 
-def interpolate_2d_vars(vars_2d, var_dict, xres, yres,
-                        layer_subdivisions, resampling_method):
+def interpolate_2d_vars(vars_2d, var_dict, xres, yres):
     """
     Generator to interpolate 2d variables (i.e conductivity, uncertainty)
+
+    :param vars_2d:
+    :param var_dict:
+    :param xres:
+    :param yres:
+    :return:
+    """
+
+    nlayers = var_dict['nlayers']
+
+    # Get the thickness of the layers
+
+    layer_thicknesses = spatial_functions.depth_to_thickness(var_dict['layer_top_depth'])
+
+    # Give the bottom layer a thickness of 20 metres
+
+    layer_thicknesses[:,-1] = 20.
+
+    # Get the vertical limits, note guard against dummy values > 800m
+
+    elevations = var_dict['elevation']
+
+    # Guard against dummy values which are deeper than 900 metres
+
+    max_depth = np.max(var_dict['layer_top_depth'][var_dict['layer_top_depth'] < 900.])
+
+    vlimits = [np.min(elevations) - max_depth,
+               np.max(elevations) + 5]
+
+    # Get the horizontal limits
+
+    distances = var_dict['distances']
+
+    hlimits = [np.min(distances), np.max(distances)]
+
+    # Get the x and y dimension coordinates
+
+    xres = np.float(xres)
+    yres = np.float(yres)
+
+    grid_y, grid_x = np.mgrid[vlimits[1]:vlimits[0]:-yres,
+                     hlimits[0]:hlimits[1]:xres]
+
+    grid_distances = grid_x[0]
+
+    grid_elevations = grid_y[:, 0]
+
+    # Add to the variable dictionary
+
+    var_dict['grid_elevations'] = grid_elevations
+
+    var_dict['grid_distances'] = grid_distances
+
+    # Interpolate the elevation
+
+    f = interp1d(distances, elevations)
+
+    max_elevation = f(grid_distances)
+
+    # Interpolate the layer thicknesses
+
+    grid_thicknesses = np.nan*np.ones(shape = (grid_distances.shape[0],
+                                               grid_elevations.shape[0]),
+                                      dtype = layer_thicknesses.dtype)
+
+    for j in range(layer_thicknesses.shape[1]):
+        # Guard against nans
+
+        if not np.isnan(layer_thicknesses[:,j]).any():
+            # Grid in log10 space
+            layer_thickness = np.log10(layer_thicknesses[:, j])
+            f = interp1d(distances, layer_thickness)
+            grid_thicknesses[:,j] = f(grid_distances)
+
+    # Tranform back to linear space
+    grid_thicknesses = 10**grid_thicknesses
+
+    # Interpolate the variables
+
+    # Iterate through variables and interpolate onto new grid
+    for var in vars_2d:
+
+        interpolated_var = np.nan*np.ones(grid_thicknesses.shape,
+                                          dtype = var_dict[var].dtype)
+
+        # For conductivity we interpolate in log10 space
+
+        point_var = var_dict[var]
+
+        new_var = np.ones(shape = (len(grid_distances),
+                                   nlayers))
+
+        if var == 'conductivity':
+
+            point_var = np.log10(point_var)
+
+        for j in range(point_var.shape[1]):
+
+            f = interp1d(distances, point_var[:,j])
+            new_var[:, j] = f(grid_distances)
+
+        if var == 'conductivity':
+
+            new_var = 10**(new_var)
+
+        # Now we need to place the 2d variables on the new grid
+        for i in range(grid_distances.shape[0]):
+            dtop = 0.
+            for j in range(nlayers - 1):
+                # Get the thickness
+                thick = grid_thicknesses[i,j]
+                # Find the elevation top and bottom
+                etop = max_elevation[i] - dtop
+                ebot = etop - thick
+                # Get the indices for this elevation range
+                j_ind = np.where((etop >= grid_elevations) & (ebot <= grid_elevations))
+                # Populate the section
+                interpolated_var[i, j_ind] = new_var[i,j]
+                # Update the depth top
+                dtop += thick
+
+        # Reverse the grid if it is west to east
+
+        if var_dict['reverse_line']:
+
+            interpolated_var = np.flipud(interpolated_var)
+
+        # We also want to transpose the grid so the up elevations are up
+
+        interpolated_var = interpolated_var.T
+
+        # Yield the generator and the dictionary with added variables
+        yield interpolated_var, var_dict
+
+
+def interpolate_2d_vars_smooth(vars_2d, var_dict, xres, yres,
+                        layer_subdivisions, resampling_method):
+    """
+    Generator to interpolate 2d variables (i.e conductivity, uncertainty). This function is not currently used but
+    produces a smoother model than
 
     :param vars_2d:
     :param var_dict:
@@ -475,7 +615,8 @@ def interpolate_2d_vars(vars_2d, var_dict, xres, yres,
     grid_elevations = grid_y[:, 0]
 
     # Mask below the maximum depth
-    max_depth = np.max(var_dict['layer_top_depth'][point_index]) + 50
+    max_depth = np.max(var_dict['layer_top_depth'][point_index])
+
 
     min_elevations = var_dict['elevation'] - max_depth * np.ones(np.shape(var_dict['layer_top_depth'][:, -1]))
 
@@ -507,7 +648,8 @@ def interpolate_2d_vars(vars_2d, var_dict, xres, yres,
                             point_vars, (grid_y, grid_x),
                             method=resampling_method)
 
-        interpolated_var = purge_invalid_elevations(var_grid, grid_y, min_elevation_grid, max_elevation_grid, yres)
+        interpolated_var = purge_invalid_elevations(var_grid, grid_y, min_elevation_grid,
+                                                    max_elevation_grid, yres)
 
         # Reverse the grid if it is west to east
 
@@ -602,7 +744,7 @@ def unpack_plot_settings(panel_dict, entry):
 def extract_hdf5_data(f, plot_vars):
     """
 
-    :param f: hdf5 file path
+    :param f: hdf5 file
     :param plot_vars:
     :return:
     dictionary with interpolated datasets
@@ -631,7 +773,8 @@ def extract_hdf5_data(f, plot_vars):
 
     return datasets
 
-def plot_grid(ax, gridded_variables, variable, panel_kwargs):
+
+def plot_grid(ax, gridded_variables, variable, panel_kwargs, x_ax_var='grid_distances'):
     """
 
     :param gridded_variables:
@@ -644,18 +787,20 @@ def plot_grid(ax, gridded_variables, variable, panel_kwargs):
 
     try:
         min_elevation = np.min(gridded_variables['elevation']) - panel_kwargs['max_depth']
-        ax.set_ylim(min_elevation)
 
     except KeyError:
 
         min_elevation = gridded_variables['grid_elevations'][-1]
 
-    max_extent = gridded_variables['grid_elevations'][0] + 10
+    extent = (gridded_variables[x_ax_var][0], gridded_variables[x_ax_var][-1],
+              gridded_variables['grid_elevations'][-1], gridded_variables['grid_elevations'][0])
 
-    extent = (gridded_variables['grid_distances'][0], gridded_variables['grid_distances'][-1],
-              gridded_variables['grid_elevations'][-1], max_extent)
+    # WE will make the ylim 10% of the depth range
 
-    ax.set_ylim(min_elevation, gridded_variables['grid_elevations'][0] + 40)
+    max_elevation = gridded_variables['grid_elevations'][0] + 0.1 * (gridded_variables['grid_elevations'][0]
+                                                                     - min_elevation)
+
+    ax.set_ylim(min_elevation, max_elevation)
 
     # Define stretch
     # Flag for a logarithmic stretch
@@ -665,7 +810,6 @@ def plot_grid(ax, gridded_variables, variable, panel_kwargs):
 
     except KeyError:
         log_stretch = False  # False unless otherwise specified
-
 
     if log_stretch:
         # Tranform the plot data
@@ -691,40 +835,27 @@ def plot_grid(ax, gridded_variables, variable, panel_kwargs):
 
     else:
         cmap = 'jet'
+
     # Plot data
+
     im = ax.imshow(data, vmin=vmin, vmax=vmax,
                    extent=extent,
                    aspect='auto',
                    cmap=cmap)
 
     # Plot the elevation as a line over the section
-    line_x = np.linspace(gridded_variables['grid_distances'][0], gridded_variables['grid_distances'][-1],
+    line_x = np.linspace(gridded_variables[x_ax_var][0], gridded_variables[x_ax_var][-1],
                          np.shape(gridded_variables[variable])[1])
 
-    ax.plot(line_x,  gridded_variables['elevation'], 'k')
+    ax.plot(line_x, gridded_variables['elevation'], 'k')
 
     # To remove gridded values that stick above this line we will fill the sky in as white
-    ax.fill_between(line_x, max_extent * np.ones(np.shape(line_x)),
+    ax.fill_between(line_x, max_elevation * np.ones(np.shape(line_x)),
                     gridded_variables['elevation'], interpolate=True, color='white', alpha=1)
 
-    try:
-        if panel_kwargs['colourbar']:
-            cb = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.02)
-            if log_stretch:
-                cb.ax.set_yticklabels([round(10 ** x, 4) for x in cb.get_ticks()])
-            if 'colourbar_label' in panel_kwargs.keys():
-                cb_label = panel_kwargs['colourbar_label']
-                cb.set_label(cb_label, fontsize=10)
-                cb.ax.tick_params(labelsize=10)
-            else:
-                pass
-        else:
-            pass
-    except KeyError:
-        pass
     # Add ylabel
     try:
-        ylabel  = panel_kwargs['ylabel']
+        ylabel = panel_kwargs['ylabel']
         ax.set_ylabel(ylabel)
     except KeyError:
         pass
@@ -741,7 +872,11 @@ def plot_grid(ax, gridded_variables, variable, panel_kwargs):
 
         ax.fill_between(line_x, eoi, grid_base, interpolate=True, color='white', alpha=0.5)
 
-def plot_single_line(ax, gridded_variables, variable, panel_kwargs):
+    return im
+
+
+def plot_single_line(ax, gridded_variables, variable, panel_kwargs,
+                     x_ax_var='grid_distances'):
     """
 
     :param ax:
@@ -759,8 +894,7 @@ def plot_single_line(ax, gridded_variables, variable, panel_kwargs):
     else:
         colour = 'black'
 
-
-    ax.plot(gridded_variables['grid_distances'], data, colour)
+    lin = ax.plot(gridded_variables[x_ax_var], data, colour)
 
     # Extract ymin and ymax if specified, otherwise assign based on the range with the line dataset
     if 'ymin' in panel_kwargs.keys():
@@ -776,7 +910,7 @@ def plot_single_line(ax, gridded_variables, variable, panel_kwargs):
     ax.set_ylim(bottom=ymin, top=ymax, auto=False)
 
     try:
-        ylabel  = panel_kwargs['ylabel']
+        ylabel = panel_kwargs['ylabel']
         ax.set_ylabel(ylabel)
     except KeyError:
         pass
@@ -787,7 +921,11 @@ def plot_single_line(ax, gridded_variables, variable, panel_kwargs):
     except KeyError:
         pass
 
-def plot_multilines_data(ax, gridded_variables, variable, panel_kwargs):
+    return lin
+
+
+def plot_multilines_data(ax, gridded_variables, variable, panel_kwargs,
+                         x_ax_var='grid_distances'):
     # Define the data
 
     data = gridded_variables[variable]
@@ -798,11 +936,11 @@ def plot_multilines_data(ax, gridded_variables, variable, panel_kwargs):
     except KeyError:
         colour = 'k'
         linewidth = 1
-
-
+    lins = []
     for i, col in enumerate(data.T):
-        ax.plot(gridded_variables['grid_distances'], data.T[i],
-                color = colour, linewidth = linewidth)
+        lin = ax.plot(gridded_variables[x_ax_var], data.T[i],
+                      color=colour, linewidth=linewidth)
+        lins.append(lin)
         ax.set_yscale('log')
     try:
         ylabel = panel_kwargs['ylabel']
@@ -810,11 +948,13 @@ def plot_multilines_data(ax, gridded_variables, variable, panel_kwargs):
     except KeyError:
         pass
 
+    return lins
+
 
 def add_axis_coords(axis_label, array,
                     axis_above, axis_position, offset=-0.15):
     """
-    Funtion for adding a coordinate axis to the bottom of the plot
+    Function for adding a coordinate axis to the bottom of the plot
 
     :param axis_label:
     :param array:
@@ -857,8 +997,6 @@ def align_axes(ax_array):
     """
     Function for aligning the axes and adding easting and northing to the bottom
     :param ax_array:
-    :param add_easting:
-    :param add_northing:
     :return:
     """
     # Dictionary for defining axis positions
@@ -874,11 +1012,15 @@ def align_axes(ax_array):
     for i, ax in enumerate(ax_array):
         ax.set_position([x0, ax_pos[i].y0, ax_width, ax_pos[i].height])
 
+    # Iterate through the axes and get position
+    for i, ax in enumerate(ax_array):
+        ax_pos[i] = ax.get_position()
+
     return ax_pos
 
 
 def plot_conductivity_section(ax_array, gridded_variables, plot_settings, panel_settings,
-                              save_fig=False,  outfile=None):
+                              save_fig=False, outfile=None):
     """
 
     :param gridded_variables:
@@ -889,23 +1031,22 @@ def plot_conductivity_section(ax_array, gridded_variables, plot_settings, panel_
     :return:
     """
 
-    # Find the hlen and vlen
-    hlen =  gridded_variables['grid_distances'][-1]
-    vlen =  gridded_variables['grid_elevations'][0] -  gridded_variables['grid_elevations'][-1]
-
-
     # Unpack the panel settings
 
     variables = unpack_plot_settings(panel_settings,
-                                          'variable')
+                                                'variable')
+
     panel_kwargs = unpack_plot_settings(panel_settings,
-                                             'panel_kwargs')
+                                                   'panel_kwargs')
+
     plot_type = unpack_plot_settings(panel_settings,
-                                          'plot_type')
+                                                'plot_type')
 
-
+    plot_objs = []
     # Iterate through the axes and plot
     for i, ax in enumerate(ax_array):
+
+        # Create an axis divider
 
         if 'title' in panel_kwargs:
             ax.set_title(panel_kwargs['title'])
@@ -915,34 +1056,118 @@ def plot_conductivity_section(ax_array, gridded_variables, plot_settings, panel_
         if plot_type[i] == 'grid':
 
             # PLot the grid
-            plot_grid(ax, gridded_variables, variables[i], panel_kwargs[i])
+            plot_objs.append(plot_grid(ax, gridded_variables,
+                                       variables[i], panel_kwargs[i]))
 
         elif plot_type[i] == 'multi_line':
 
-            plot_multilines_data(ax, gridded_variables, variables[i], panel_kwargs[i])
+            plot_objs.append(plot_multilines_data(ax, gridded_variables,
+                                                             variables[i], panel_kwargs[i]))
 
         elif plot_type[i] == 'line':
-            plot_single_line(ax, gridded_variables, variables[i], panel_kwargs[i])
+            plot_objs.append(plot_single_line(ax, gridded_variables, variables[i],
+                                                         panel_kwargs[i]))
 
-    # Now iterate through all of the axes and move them to align with the minimum
-    # right hand margin seen for all axes
+    return plot_objs
 
-    ax_pos = align_axes(ax_array)
 
-    # Add axis with northing at the bottom of the plot
+def format_panels(axes, panel_settings, plot_settings):
+    """
+    A function for formatting panels to apply the vertical exaggeration specified in the pane settings
 
-    add_axis_coords('northing', gridded_variables['northing'], ax_array[-1], ax_pos[i], offset=-0.2)
+    :param axes: array of axes
+    :param panel_settings: dictionary of panel settings
+    :param plot_settings: dictionary of plot settings
+    :return:
+    """
+    # Iterate through the axes and set the aspect if it is included in the panel settings
 
-    add_axis_coords('easting', gridded_variables['easting'], ax_array[-1], ax_pos[i], offset=-0.45)
+    grid_ratio = {}
 
-    if save_fig:
-        # If the dpi is set extract it from the plot settings
-        if 'dpi' in plot_settings:
-            dpi = plot_settings['dpi']
-        else:
-            dpi= 300
-        plt.savefig(outfile, dpi=dpi)
-        plt.close()
+    height_ratios = unpack_plot_settings(panel_settings,
+                                                    'height_ratio')
+
+    for i, ax in enumerate(axes):
+        panel = panel_settings['panel_' + str(i + 1)]
+
+        if 'vertical_exaggeration' in panel['panel_kwargs']:
+            # Assert it is a grid
+            assert panel['plot_type'] == 'grid'
+
+            # Get the vertical exageration
+            vexag = panel['panel_kwargs']['vertical_exaggeration']
+
+            # Set the aspect
+            ax.set_aspect(vexag)
+
+            ax.set_ylim(ax.get_ylim())
+
+            # get the grid ratio
+            grid_ratio[i + 1] = (np.diff(ax.get_ylim()) / np.diff(ax.get_xlim())) * vexag
+
+    ax_pos = {}
+    # Iterate through the axes and get position
+    for i, ax in enumerate(axes):
+        # Find the position of each axis
+        ax_pos[i] = ax.get_position(original=False)
+
+    # Use this to set the size of the graph
+    vertical_margin = plot_settings['vertical_margin']
+    panel_vgap = plot_settings['panel_vgap']
+    plot_width = plot_settings['plot_width']
+
+    # Find the height
+
+    plot_height = 0.
+    plot_height = plot_height + vertical_margin + (len(panel_settings) - 1) * panel_vgap
+
+    # For gridded items find the axis height
+
+    cond_ax_height = 0
+
+    for item in grid_ratio:
+        # Get the wdith of the axis in inches
+        ax_width = np.min([x.width for x in ax_pos.values()]) * plot_width
+        cond_ax_height = ax_width * grid_ratio[item]
+
+        plot_height += cond_ax_height
+
+    # Now add the height for the other panels
+
+    for i in range(len(height_ratios)):
+        panel = panel_settings['panel_' + str(i + 1)]
+
+        if not 'vertical_exaggeration' in panel['panel_kwargs']:
+            plot_height += cond_ax_height * (height_ratios[i] / height_ratios[item - 1])
+
+    plt.gcf().set_size_inches(plot_width, plot_height)
+
+def add_colourbar(fig, ax, im, x0, y0, width, height, panel_kwargs):
+    # Define the colourmap based on the panel kwargs input
+    if 'colourbar_label' in panel_kwargs.keys():
+        cm = plt.cm.get_cmap(panel_kwargs['cmap'])
+    else:
+        cm = plt.cm.get_cmap('jet')
+
+    # Transform rel position and transform them after to get the
+    # ABSOLUTE POSITION AND DIMENSIONS
+    Bbox = mpl.transforms.Bbox.from_bounds(x0, y0, width, height)
+    trans = ax.transAxes + fig.transFigure.inverted()
+    l, b, w, h = mpl.transforms.TransformedBbox(Bbox, trans).bounds
+
+    # Now just create the axes and the colorbar
+    cbaxes = fig.add_axes([l, b, w, h])
+    cb = plt.colorbar(im, cax=cbaxes,
+                      orientation='vertical')
+    # If logplot then transform the labels bac to S/m
+    if panel_kwargs['log_plot']:
+        cb.ax.set_yticklabels([round(10 ** x, 4) for x in cb.get_ticks()])
+
+    if 'colourbar_label' in panel_kwargs.keys():
+        cb.ax.tick_params(labelsize=9)
+        cb_label = panel_kwargs['colourbar_label']
+        cb.set_label(cb_label, fontsize=10)
+        cb.ax.tick_params(labelsize=10)
 
 
 def plot_conductivity_section_from_hdf5file(ax_array, path, plot_settings, panel_settings, save_fig = False,
@@ -981,7 +1206,7 @@ def add_1d_layered_model(ax, df, gridded_variables, plot_variable, xy_columns, c
     d, i = spatial_functions.nearest_neighbours(df[xy_columns].values,
                                                utm_coords,
                                                points_required=1,
-                                               max_distance=200.)
+                                               max_distance=max_distance)
 
     # Add the minimum distance to the dataframe and remove nulls (i.e. those
     # that have a distance greater than the maximum allowable as denoted by a value
@@ -1016,29 +1241,33 @@ def add_1d_layered_model(ax, df, gridded_variables, plot_variable, xy_columns, c
         ax.add_patch(rect)
 
 
-def add_downhole_log_data(ax, df, gridded_variables, plot_variable, xy_columns, cmap='jet',
-                          colour_stretch=[0, 0.2], log_stretch=False, max_distance=200., stick_thickness=150.):
+def add_downhole_log_data(ax, df, gridded_variables, plot_variable, xy_columns,
+                          cmap='jet',colour_stretch=[0, 0.2], log_stretch=False,
+                          max_distance=200., stick_thickness=150.):
 
     # Get the coordinates of the section
     utm_coords = np.hstack((gridded_variables['easting'].reshape([-1, 1]),
                             gridded_variables['northing'].reshape([-1, 1])))
 
+
     # Find the nearest neighbours within the maximum distance
-    d, i = spatial_functions.nearest_neighbours(df[xy_columns].values,
+    d, i = spatial_functions.nearest_neighbours(df[xy_columns].values[0:1],
                                                utm_coords,
                                                points_required=1,
                                                max_distance=max_distance)
 
+    # Kill the function if the downhole logs is not within the max distance
+    if np.isnan(d).all():
+        return None
+    else:
+        print(str(df['borehole_id'].unique()), ' added to plot')
+
     # Add the minimum distance to the dataframe and remove nulls (i.e. those
     # that have a distance greater than the maximum allowable as denoted by a value
     # that is greater thant the length of the xy coordinates
-    df['min_index'] = i
+    df['min_index'] = i[0]
 
     df = df[df['min_index'] < len(utm_coords)]
-
-    # Kill the function if the downhole logs is not within the max distance
-    if len(df) == 0:
-        return None
 
 
     # Create an elevation from, to and distance along the line using the elevation and
@@ -1065,7 +1294,7 @@ def add_downhole_log_data(ax, df, gridded_variables, plot_variable, xy_columns, 
     cmap = plt.get_cmap(cmap)
     m = cm.ScalarMappable(norm=norm, cmap=cmap)
 
-    # Iterate through the elevation intervls and add them to the axis
+    # Iterate through the elevation intervals and add them to the axis
     for index, row in df.iterrows():
         # Define variables from the dataframe row
         elevation_from = row['Elevation_from']
@@ -1082,8 +1311,9 @@ def add_downhole_log_data(ax, df, gridded_variables, plot_variable, xy_columns, 
 
     rect = Rectangle((distance_along_line, df['Elevation_from'].min()), stick_thickness,
                      thickness, edgecolor='k', facecolor='none')
-
     ax.add_patch(rect)
+
+    return True
 
 def add_custom_colourbar(ax, cmap, vmin, vmax, xlabel):
     """
@@ -1495,7 +1725,7 @@ def drawLith(lithology):
             top = lith_row['Depth_from']
             bottom = lith_row['Depth_to']
             # Extract lithology info
-            lith = lith_row['Lithology_name']
+            lith = lith_row['Lithology_type']
             # Apply lithology to lookup
             if lith not in lithsymbols.keys():
                 simp_lith = 'unknown'
@@ -1509,7 +1739,7 @@ def drawLith(lithology):
                                     closed=True, **lithsymbols[simp_lith]))
             # If the lithology isn't in the lookup table, add a label for what the actual lithology is
             if simp_lith == 'unknown':
-                labels.append([0.05, (bottom + top) / 2, lith_row['Lithology_name']])
+                labels.append([0.05, (bottom + top) / 2, lith_row['Lithology_type']])
         # Define the legend for the lithology
         leg_patches = [mpatches.Patch(color=lithsymbols[simp_lith]['facecolor'], hatch=lithsymbols[simp_lith]['hatch'],
                                       label=simp_lith) for simp_lith in drawn_lithtypes]
@@ -1603,7 +1833,7 @@ def drawAEMConds(aem):
     coords = np.array(coords)
     plt.plot(coords[:, 0], coords[:, 1], '-')
     ax = plt.gca()
-    ax.set_xlabel('Modelled AEM\nConductivity (S/m)')
+    ax.set_xlabel('Conductivity (S/m)')
     ax.set_xscale('log')
     ax.grid(True)
     ax.xaxis.tick_top()
@@ -1682,7 +1912,7 @@ def drawCompLog(data, output_path=None):
     # key parameters for during plotting
     hole_name = header.loc[0, 'Borehole_name']
     max_depth = math.ceil(getMaxDepth(data))
-    metres_per_inch = 2.5
+    metres_per_inch = 5
     figlength = 4.5 + max_depth / metres_per_inch
     elevation = getGLElevation(data['header'])
     if hasWL:
@@ -1706,26 +1936,26 @@ def drawCompLog(data, output_path=None):
     width_ratios = []
     chart_col_order = []
     if hasGamma:
-        width_ratios.append(3.5)
+        width_ratios.append(3)
         chart_col_order.append('gamma')
     if hasConductivity:
-        width_ratios.append(3.5)
+        width_ratios.append(3)
         chart_col_order.append('cond')
     if hasAEMConductivity:
-        width_ratios.append(3.5)
+        width_ratios.append(3)
         chart_col_order.append('AEM')
     if hasNMRLogs:
-        width_ratios.append(3.5)
+        width_ratios.append(3)
         chart_col_order.append('nmr')
     if hasLith:
-        width_ratios.append(3)
+        width_ratios.append(2)
         chart_col_order.append('lith')
     if hasConstructionLogs:
-        width_ratios.append(2)
+        width_ratios.append(1)
         chart_col_order.append('construction')
     if hasPoreWaterChem:
-        width_ratios.append(2.5)
-        width_ratios.append(2.5)
+        width_ratios.append(2)
+        width_ratios.append(2)
         chart_col_order.append('EC')
         chart_col_order.append('pH')
     if hasMagSus:
@@ -1741,7 +1971,7 @@ def drawCompLog(data, output_path=None):
     SWLlabelaxis = int(ncols / 2)
     gs = gridspec.GridSpec(nrows=nrows, ncols=ncols, width_ratios=width_ratios, height_ratios=height_ratios)
 
-    fig = plt.figure(figsize=figsize, dpi = 200)
+    fig = plt.figure(figsize=figsize)
     fig.suptitle(hole_name + ' Composite Log', size=22)
 
     # the code to add the images so they display well when saved to a file!
@@ -1762,7 +1992,8 @@ def drawCompLog(data, output_path=None):
             ax.set_ylim([max_depth, 0])  # sets the range for the logs and inverts the axes
         else:
             ax = fig.add_subplot(gs[1, i], sharey=axs[0])
-            # pinched from https://stackoverflow.com/questions/20416609/remove-the-x-axis-ticks-while-keeping-the-grids-matplotlib
+            # pinched from
+            # #https://stackoverflow.com/questions/20416609/remove-the-x-axis-ticks-while-keeping-the-grids-matplotlib
             # don't really understand what it does
             for tic in ax.yaxis.get_major_ticks():
                 tic.tick1On = tic.tick2On = False
@@ -1801,5 +2032,4 @@ def drawCompLog(data, output_path=None):
         plt.savefig(output_path + '.svg')
         plt.savefig(output_path + '.png')
     else:
-        plt.show()
-    plt.close('all')
+        return fig, axs
