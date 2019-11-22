@@ -6,7 +6,7 @@ import yaml
 import importlib
 
 
-infile = r"C:\Users\PCUser\Desktop\EK_data\AEM\KeepRiver_EM_workbench_raw.dat"
+infile = r"C:\Users\PCUser\Desktop\NSC_data\data\AEM\HE\WB_Exported_Data\HE_raw_all.xyz"
 
 EM_data = AEM_utils.parse_wb_file(infile)
 
@@ -27,7 +27,9 @@ for c in df.columns:
         print(c)
         df.at[:,c] = df[c].astype(np.float64)
 # Replace dummy with nulls for floating point columns
+
 df[df == np.float(EM_data['DUMMY'])] = np.nan
+
 
 # We need to do some additional processing on this data in order to get it
 # consistent
@@ -256,12 +258,8 @@ outfile = r'C:\temp\EK_EM_workbench_temp.dat'
 df_output.to_csv(outfile, sep = '|', index = False, header = False)
 
 
-
-new_s = ''
-
 with open(outfile, 'r') as inf:
-    s = inf.read()#for line in inf:
-        #new_s+=line.replace('|','')
+    s = inf.read()
 
 new_s = s.replace('|','')
 
