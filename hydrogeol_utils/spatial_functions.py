@@ -554,7 +554,7 @@ def grid_points_gdal(cond_point_utils_inst, grid_resolution,
     @return grid: dictionary with gridded data, geotransform and wkt
     '''
     assert not (
-                native_grid_bounds and reprojected_grid_bounds), 'Either native_grid_bounds or reprojected_grid_bounds can be provided, but not both'
+                native_grid_bounds and reprojected_grid_bounds),'Either native_grid_bounds or reprojected_grid_bounds can be provided, but not both'
     # Grid all data variables if not specified
     variables = variables or cond_point_utils_inst.point_variables
 
@@ -610,6 +610,7 @@ def grid_points_gdal(cond_point_utils_inst, grid_resolution,
     point_subset_mask = np.logical_and(spatial_subset_mask, point_subset_mask)
 
     coordinates = cond_point_utils_inst.xycoords[point_subset_mask]
+
     # Reproject coordinates if required
     if grid_wkt is not None:
         # N.B: Be careful about XY vs YX coordinate order
