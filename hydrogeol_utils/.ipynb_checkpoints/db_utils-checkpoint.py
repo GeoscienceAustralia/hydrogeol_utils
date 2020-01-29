@@ -3,7 +3,7 @@ import shutil
 import sqlite3
 import pandas as pd
 
-spatiallite_path = r'C:\W10DEV\mod_spatialite-4.3.0a-win-amd64'
+spatiallite_path = r'C:\Users\U19955\Desktop\mod_spatialite-4.3.0a-win-amd64'
 os.environ['PATH'] = spatiallite_path + ';' + os.environ['PATH']
 
 
