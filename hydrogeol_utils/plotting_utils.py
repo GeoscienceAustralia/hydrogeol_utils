@@ -754,22 +754,22 @@ def extract_hdf5_data(f, plot_vars):
 
     for item in f.values():
         if item.name[1:] in plot_vars:
-            datasets[item.name[1:]] = item.value
+            datasets[item.name[1:]] = item[()]
         # We also need to know easting, northing, doi, elevations and grid elevations
         if item.name[1:] == 'easting':
-            datasets['easting'] = item.value
+            datasets['easting'] = item[()]
         if item.name[1:] == 'northing':
-            datasets['northing'] = item.value
+            datasets['northing'] = item[()]
         if item.name[1:] == 'grid_elevations':
-            datasets['grid_elevations'] = item.value
+            datasets['grid_elevations'] = item[()]
         if item.name[1:] == 'depth_of_investigation':
-            datasets['depth_of_investigation'] = item.value
+            datasets['depth_of_investigation'] = item[()]
         if item.name[1:] == 'elevation':
-            datasets['elevation'] = item.value
+            datasets['elevation'] = item[()]
         if item.name[1:] == 'grid_distances':
-            datasets['grid_distances'] = item.value
+            datasets['grid_distances'] = item[()]
         if item.name[1:] == 'flm_layer_top_depth':
-            datasets['flm_layer_top_depth'] = item.value
+            datasets['flm_layer_top_depth'] = item[()]
 
     return datasets
 

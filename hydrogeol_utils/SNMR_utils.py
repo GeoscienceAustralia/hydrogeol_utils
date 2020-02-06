@@ -215,11 +215,9 @@ def plot_profile(ax, df, doi= None, plot_mobile_water = False,
     else:
         ax.plot(Total, y, 'k-', linewidth=0.5)
 
-    # make legend
-    ax.legend(fontsize=6)
 
     # define axis names
-    ax.set_ylabel('Depth (upper) m')
+    ax.set_ylabel('Depth m')
     ax.set_xlabel('Water content %')
 
     # Add the depth of investigation if provided
@@ -227,15 +225,10 @@ def plot_profile(ax, df, doi= None, plot_mobile_water = False,
     if doi is not None:
 
         ax.hlines(doi, ax.get_xlim()[0], ax.get_xlim()[1],
-                  color='green', linestyles='dotted')
-        ax.text(np.max(Total) - 5, (doi - 1),
-                'Depth of investigation', fontsize=6)
-    if water_table_depth is not None:
+                  color='green', linestyles='dotted',
+                 label = 'depth of investigation')
 
-        ax.hlines(water_table_depth, 0, np.max(Total) + 5,
-                  color='k', linestyles='dashed')
-        ax.text(np.max(Total) - 0.1*np.max(Total),
-                (water_table_depth - 1),
-                'water table', fontsize=6)
-
+        # make legend
+    ax.legend(fontsize=10)
+    ax.set_ylim(0, doi + 10.)
     return ax
