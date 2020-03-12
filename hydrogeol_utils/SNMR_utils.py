@@ -228,7 +228,9 @@ def plot_profile(ax, df, doi= None, plot_mobile_water = False,
                   color='green', linestyles='dotted',
                  label = 'depth of investigation')
 
+        ax.set_ylim(0, doi + 10.)
+
         # make legend
     ax.legend(fontsize=10)
-    ax.set_ylim(0, doi + 10.)
+
     return ax
