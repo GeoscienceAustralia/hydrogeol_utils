@@ -15,7 +15,7 @@ click-plugins==1.1.1
 cligj==0.5.0
 cloudpickle==1.2.2
 colorama==0.4.1
-cryptography==2.7
+cryptography==3.2
 cycler==0.10.0
 cytoolz==0.10.0
 dask==2.6.0
